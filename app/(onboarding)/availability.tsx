@@ -24,7 +24,7 @@ export default function AvailabilityOnboardingScreen() {
       });
       
       // Navigate to main app
-      router.replace('/(main)' as any);
+      router.replace('/explore' as any);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to complete onboarding');
     } finally {

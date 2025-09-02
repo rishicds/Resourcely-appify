@@ -160,6 +160,54 @@ const collections = {
       { key: 'room_active', type: 'key', attributes: ['roomId', 'isActive'] },
       { key: 'expires_date', type: 'key', attributes: ['expiresAt'] },
     ]
+  },
+
+  borrows: {
+    id: 'borrows',
+    name: 'Borrow Requests',
+    attributes: [
+      { key: 'title', type: 'string', size: 200, required: true },
+      { key: 'description', type: 'string', size: 2000, required: true },
+      { key: 'category', type: 'string', size: 20, required: false }, // books, tools, electronics, other
+      { key: 'borrowerId', type: 'string', size: 20, required: true },
+      { key: 'lenderId', type: 'string', size: 20, required: false },
+      { key: 'roomId', type: 'string', size: 20, required: true },
+      { key: 'status', type: 'string', size: 20, required: false, default: 'pending' }, // pending, approved, borrowed, returned, rejected
+      { key: 'borrowedAt', type: 'datetime', required: false },
+      { key: 'returnedAt', type: 'datetime', required: false },
+      { key: 'expectedReturnDate', type: 'string', size: 100, required: false },
+      { key: 'createdAt', type: 'datetime', required: false },
+      { key: 'approvedAt', type: 'datetime', required: false },
+    ],
+    indexes: [
+      { key: 'room_borrows', type: 'key', attributes: ['roomId'] },
+      { key: 'borrower', type: 'key', attributes: ['borrowerId'] },
+      { key: 'lender', type: 'key', attributes: ['lenderId'] },
+      { key: 'borrow_status', type: 'key', attributes: ['status'] },
+      { key: 'created_date', type: 'key', attributes: ['createdAt'], orders: ['desc'] },
+      { key: 'room_status', type: 'key', attributes: ['roomId', 'status'] },
+      { key: 'category_index', type: 'key', attributes: ['category'] },
+      { key: 'borrowed_date', type: 'key', attributes: ['borrowedAt'], orders: ['desc'] },
+    ]
+  },
+
+  messages: {
+    id: 'messages',
+    name: 'Chat Messages',
+    attributes: [
+      { key: 'content', type: 'string', size: 2000, required: true },
+      { key: 'senderId', type: 'string', size: 20, required: true },
+      { key: 'roomId', type: 'string', size: 20, required: true },
+      { key: 'type', type: 'string', size: 10, required: false, default: 'text' }, // text, image, file
+      { key: 'createdAt', type: 'datetime', required: false },
+    ],
+    indexes: [
+      { key: 'room_messages', type: 'key', attributes: ['roomId'] },
+      { key: 'sender', type: 'key', attributes: ['senderId'] },
+      { key: 'created_date', type: 'key', attributes: ['createdAt'], orders: ['desc'] },
+      { key: 'room_time', type: 'key', attributes: ['roomId', 'createdAt'], orders: ['desc'] },
+      { key: 'message_search', type: 'fulltext', attributes: ['content'] },
+    ]
   }
 };
 

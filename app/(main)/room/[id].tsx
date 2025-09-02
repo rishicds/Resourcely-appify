@@ -1,15 +1,24 @@
-import { BroadcastModal, RequestModal } from '@/components/room/RoomModals';
+import { GroupChat } from '@/components/room/GroupChat';
+import { BorrowModal, BroadcastModal, RequestModal } from '@/components/room/RoomModals';
 import { Icon } from '@/components/ui/icon';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import {
+  approveBorrowRequest,
+  BorrowRequest,
+  createBorrowRequest,
+  getRoomBorrowRequests,
+  markAsBorrowed,
+  markAsReturned
+} from '@/lib/borrows';
 import { Broadcast, createBroadcast, getRoomBroadcasts } from '@/lib/broadcasts';
 import { acceptRequest, createRequest, getRoomRequests, Request } from '@/lib/requests';
 import { getRoomById } from '@/lib/rooms';
 import { getAvailableRoomUsers, searchUsers, User } from '@/lib/search';
 import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Check, Copy, MessageSquare, Search, Trophy, Zap } from 'lucide-react-native';
+import { ArrowLeft, Check, Copy, MessageSquare, Package, Search, Trophy, Users, Zap } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -47,7 +56,7 @@ export default function RoomScreen() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'leaderboard'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'leaderboard' | 'borrows' | 'chat'>('dashboard');
   const [loading, setLoading] = useState(true);
   const [copiedRoomCode, setCopiedRoomCode] = useState(false);
   
@@ -56,10 +65,12 @@ export default function RoomScreen() {
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [broadcasts, setBroadcasts] = useState<ActiveBroadcast[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
+  const [borrowRequests, setBorrowRequests] = useState<BorrowRequest[]>([]);
   
   // Modal states
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showBorrowModal, setShowBorrowModal] = useState(false);
 
   // Load room data
   const loadRoomData = useCallback(async () => {
@@ -92,6 +103,10 @@ export default function RoomScreen() {
       // Load requests
       const roomRequests = await getRoomRequests(id as string);
       setRequests(roomRequests);
+      
+      // Load borrow requests
+      const roomBorrowRequests = await getRoomBorrowRequests(id as string);
+      setBorrowRequests(roomBorrowRequests);
       
     } catch (error) {
       console.error('Error loading room data:', error);
@@ -180,6 +195,61 @@ export default function RoomScreen() {
     } catch (error) {
       console.error('Error creating request:', error);
       Alert.alert('Error', 'Failed to create request');
+    }
+  };
+
+  const handleCreateBorrowRequest = async (data: {
+    title: string;
+    description: string;
+    category: string;
+    expectedReturnDate?: string;
+  }) => {
+    if (!user || !id) return;
+    
+    try {
+      await createBorrowRequest({
+        ...data,
+        borrowerId: user.$id,
+        roomId: id as string,
+      });
+      
+      await loadRoomData(); // Refresh data
+      setShowBorrowModal(false);
+    } catch (error) {
+      console.error('Error creating borrow request:', error);
+      Alert.alert('Error', 'Failed to create borrow request');
+    }
+  };
+
+  const handleApproveBorrowRequest = async (requestId: string) => {
+    if (!user) return;
+    
+    try {
+      await approveBorrowRequest(requestId, user.$id);
+      await loadRoomData(); // Refresh data
+    } catch (error) {
+      console.error('Error approving borrow request:', error);
+      Alert.alert('Error', 'Failed to approve borrow request');
+    }
+  };
+
+  const handleMarkAsBorrowed = async (requestId: string) => {
+    try {
+      await markAsBorrowed(requestId);
+      await loadRoomData(); // Refresh data
+    } catch (error) {
+      console.error('Error marking as borrowed:', error);
+      Alert.alert('Error', 'Failed to mark as borrowed');
+    }
+  };
+
+  const handleMarkAsReturned = async (requestId: string) => {
+    try {
+      await markAsReturned(requestId);
+      await loadRoomData(); // Refresh data
+    } catch (error) {
+      console.error('Error marking as returned:', error);
+      Alert.alert('Error', 'Failed to mark as returned');
     }
   };
 
@@ -414,6 +484,133 @@ export default function RoomScreen() {
     </>
   );
 
+  const renderBorrows = () => (
+    <>
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Borrow & Share</Text>
+          <TouchableOpacity 
+            style={[styles.addButton, { backgroundColor: colors.tint }]}
+            onPress={() => setShowBorrowModal(true)}
+          >
+            <Text style={styles.addButtonText}>Request Item</Text>
+          </TouchableOpacity>
+        </View>
+        
+        {borrowRequests.map(borrowRequest => (
+          <View key={borrowRequest.$id} style={[styles.requestCard, { backgroundColor: colors.background }]}>
+            <View style={styles.requestHeader}>
+              <View style={[
+                styles.requestStatus,
+                { 
+                  backgroundColor: borrowRequest.status === 'pending' ? '#FFB84D20' : 
+                                   borrowRequest.status === 'approved' ? '#4ECDC420' :
+                                   borrowRequest.status === 'borrowed' ? '#3498DB20' :
+                                   borrowRequest.status === 'returned' ? '#2ECC7120' : '#FF6B6B20'
+                }
+              ]}>
+                <Text style={[
+                  styles.requestStatusText,
+                  { 
+                    color: borrowRequest.status === 'pending' ? '#FFB84D' : 
+                           borrowRequest.status === 'approved' ? '#4ECDC4' :
+                           borrowRequest.status === 'borrowed' ? '#3498DB' :
+                           borrowRequest.status === 'returned' ? '#2ECC71' : '#FF6B6B'
+                  }
+                ]}>
+                  {borrowRequest.status}
+                </Text>
+              </View>
+              <Text style={[styles.requestTime, { color: colors.tabIconDefault }]}>
+                {formatTimeAgo(borrowRequest.createdAt)}
+              </Text>
+            </View>
+            
+            <Text style={[styles.requestTitle, { color: colors.text }]}>{borrowRequest.title}</Text>
+            <Text style={[styles.requestDescription, { color: colors.tabIconDefault }]}>
+              {borrowRequest.description}
+            </Text>
+            
+            <View style={styles.borrowMeta}>
+              <View style={[styles.tag, { backgroundColor: colors.tint + '20' }]}>
+                <Text style={[styles.tagText, { color: colors.tint }]}>{borrowRequest.category}</Text>
+              </View>
+              {borrowRequest.expectedReturnDate && (
+                <Text style={[styles.expectedReturn, { color: colors.tabIconDefault }]}>
+                  Return: {borrowRequest.expectedReturnDate}
+                </Text>
+              )}
+            </View>
+            
+            <View style={styles.requestFooter}>
+              <Text style={[styles.requestRequester, { color: colors.tabIconDefault }]}>
+                by User {borrowRequest.borrowerId.substring(0, 8)}
+              </Text>
+              {borrowRequest.lenderId && (
+                <Text style={[styles.requestHelper, { color: colors.tint }]}>
+                  lender: User {borrowRequest.lenderId.substring(0, 8)}
+                </Text>
+              )}
+            </View>
+            
+            {/* Action Buttons */}
+            {borrowRequest.status === 'pending' && borrowRequest.borrowerId !== user?.$id && (
+              <TouchableOpacity 
+                style={[styles.acceptButton, { backgroundColor: colors.tint }]}
+                onPress={() => handleApproveBorrowRequest(borrowRequest.$id)}
+              >
+                <Text style={styles.acceptButtonText}>Offer to Lend</Text>
+              </TouchableOpacity>
+            )}
+            
+            {borrowRequest.status === 'approved' && borrowRequest.lenderId === user?.$id && (
+              <TouchableOpacity 
+                style={[styles.acceptButton, { backgroundColor: '#3498DB' }]}
+                onPress={() => handleMarkAsBorrowed(borrowRequest.$id)}
+              >
+                <Text style={styles.acceptButtonText}>Mark as Borrowed</Text>
+              </TouchableOpacity>
+            )}
+            
+            {borrowRequest.status === 'borrowed' && (borrowRequest.borrowerId === user?.$id || borrowRequest.lenderId === user?.$id) && (
+              <TouchableOpacity 
+                style={[styles.acceptButton, { backgroundColor: '#2ECC71' }]}
+                onPress={() => handleMarkAsReturned(borrowRequest.$id)}
+              >
+                <Text style={styles.acceptButtonText}>Mark as Returned</Text>
+              </TouchableOpacity>
+            )}
+            
+            {/* Tracking Info */}
+            {borrowRequest.borrowedAt && (
+              <View style={styles.trackingInfo}>
+                <Text style={[styles.trackingText, { color: colors.tabIconDefault }]}>
+                  📦 Borrowed: {formatTimeAgo(borrowRequest.borrowedAt)}
+                </Text>
+              </View>
+            )}
+            
+            {borrowRequest.returnedAt && (
+              <View style={styles.trackingInfo}>
+                <Text style={[styles.trackingText, { color: colors.tint }]}>
+                  ✅ Returned: {formatTimeAgo(borrowRequest.returnedAt)}
+                </Text>
+              </View>
+            )}
+          </View>
+        ))}
+        
+        {borrowRequests.length === 0 && (
+          <View style={styles.emptyContainer}>
+            <Text style={[styles.emptyText, { color: colors.tabIconDefault }]}>
+              No borrow requests yet. Start sharing resources!
+            </Text>
+          </View>
+        )}
+      </View>
+    </>
+  );
+
   const handleAcceptRequest = async (requestId: string) => {
     if (!user) return;
     
@@ -525,19 +722,58 @@ export default function RoomScreen() {
             Leaderboard
           </Text>
         </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'borrows' && styles.activeTab]}
+          onPress={() => setActiveTab('borrows')}
+        >
+          <Icon 
+            name={Package} 
+            size={20} 
+            color={activeTab === 'borrows' ? colors.tint : colors.tabIconDefault} 
+          />
+          <Text style={[
+            styles.tabText,
+            { color: activeTab === 'borrows' ? colors.tint : colors.tabIconDefault }
+          ]}>
+            Borrows
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
+          onPress={() => setActiveTab('chat')}
+        >
+          <Icon 
+            name={Users} 
+            size={20} 
+            color={activeTab === 'chat' ? colors.tint : colors.tabIconDefault} 
+          />
+          <Text style={[
+            styles.tabText,
+            { color: activeTab === 'chat' ? colors.tint : colors.tabIconDefault }
+          ]}>
+            Chat
+          </Text>
+        </TouchableOpacity>
       </View>
 
       {/* Content */}
-      <ScrollView 
-        style={styles.content}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-        }
-      >
-        {activeTab === 'dashboard' && renderDashboard()}
-        {activeTab === 'requests' && renderRequests()}
-        {activeTab === 'leaderboard' && renderLeaderboard()}
-      </ScrollView>
+      {activeTab === 'chat' ? (
+        <GroupChat roomId={id as string} />
+      ) : (
+        <ScrollView 
+          style={styles.content}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+          }
+        >
+          {activeTab === 'dashboard' && renderDashboard()}
+          {activeTab === 'requests' && renderRequests()}
+          {activeTab === 'leaderboard' && renderLeaderboard()}
+          {activeTab === 'borrows' && renderBorrows()}
+        </ScrollView>
+      )}
 
       {/* Modals */}
       <BroadcastModal
@@ -550,6 +786,12 @@ export default function RoomScreen() {
         visible={showRequestModal}
         onClose={() => setShowRequestModal(false)}
         onSubmit={handleCreateRequest}
+      />
+      
+      <BorrowModal
+        visible={showBorrowModal}
+        onClose={() => setShowBorrowModal(false)}
+        onSubmit={handleCreateBorrowRequest}
       />
     </SafeAreaView>
   );
@@ -886,5 +1128,31 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
+  },
+  borrowMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  expectedReturn: {
+    fontSize: 12,
+    fontStyle: 'italic',
+  },
+  trackingInfo: {
+    marginTop: 8,
+    paddingVertical: 4,
+  },
+  trackingText: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  emptyContainer: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
   },
 });
