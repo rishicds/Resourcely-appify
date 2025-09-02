@@ -31,6 +31,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       setState(prev => ({ ...prev, isLoading: true }));
       
+      // Add a small delay to prevent immediate crashes on app startup
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const hasSession = await authService.checkSession();
       
       if (hasSession) {
@@ -52,8 +55,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // If there's an error, try to clean up any broken session
       try {
         await authService.signOut();
-      } catch {
-        // Ignore cleanup errors
+      } catch (signOutError) {
+        // Ignore cleanup errors in production
+        console.log('Cleanup error (can be ignored):', signOutError);
       }
       setState({
         user: null,

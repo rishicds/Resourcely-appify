@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Models, Permission, Role } from 'react-native-appwrite';
 import { account, appwriteConfig, databases, ID } from './appwrite';
 import { transformUserForAppwrite, transformUserFromAppwrite } from './user-utils';
@@ -19,7 +20,66 @@ export interface AuthState {
   isAuthenticated: boolean;
 }
 
+// Storage keys
+const STORAGE_KEYS = {
+  USER: 'resourcely_user',
+  SESSION: 'resourcely_session',
+} as const;
+
+// Timeout wrapper for async operations
+const withTimeout = <T>(promise: Promise<T>, timeoutMs: number = 10000): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => 
+      setTimeout(() => reject(new Error('Operation timed out')), timeoutMs)
+    )
+  ]);
+};
+
 class AuthService {
+  // Cache user data to local storage
+  private async cacheUser(user: User | null) {
+    try {
+      if (user) {
+        await AsyncStorage.setItem(STORAGE_KEYS.USER, JSON.stringify(user));
+      } else {
+        await AsyncStorage.removeItem(STORAGE_KEYS.USER);
+      }
+    } catch (error) {
+      console.log('Failed to cache user data:', error);
+    }
+  }
+
+  // Get cached user data
+  private async getCachedUser(): Promise<User | null> {
+    try {
+      const cachedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
+      return cachedUser ? JSON.parse(cachedUser) : null;
+    } catch (error) {
+      console.log('Failed to get cached user data:', error);
+      return null;
+    }
+  }
+
+  // Cache session status
+  private async cacheSessionStatus(hasSession: boolean) {
+    try {
+      await AsyncStorage.setItem(STORAGE_KEYS.SESSION, hasSession.toString());
+    } catch (error) {
+      console.log('Failed to cache session status:', error);
+    }
+  }
+
+  // Get cached session status
+  private async getCachedSessionStatus(): Promise<boolean> {
+    try {
+      const cached = await AsyncStorage.getItem(STORAGE_KEYS.SESSION);
+      return cached === 'true';
+    } catch (error) {
+      console.log('Failed to get cached session status:', error);
+      return false;
+    }
+  }
   // Sign up with email and password
   async createAccount(email: string, password: string, name: string) {
     try {
@@ -63,25 +123,36 @@ class AuthService {
     try {
       // Check if there's already an active session
       console.log('Checking for active session...');
-      const hasActiveSession = await this.checkSession();
+      const hasActiveSession = await withTimeout(this.checkSession(), 5000);
       console.log('Has active session:', hasActiveSession);
       
       if (hasActiveSession) {
         // If there's already a session, just return the current user
         console.log('Active session found, getting current user...');
-        const user = await this.getCurrentUser();
+        const user = await withTimeout(this.getCurrentUser(), 8000);
         console.log('Current user:', user?.name);
+        if (user) {
+          await this.cacheUser(user);
+          await this.cacheSessionStatus(true);
+        }
         return { session: null, user };
       }
       
       console.log('Creating new session...');
-      const session = await account.createEmailPasswordSession(email, password);
+      const session = await withTimeout(
+        account.createEmailPasswordSession(email, password),
+        10000
+      );
       console.log('Session created:', !!session);
       
       if (session) {
         console.log('Getting user after session creation...');
-        const user = await this.getCurrentUser();
+        const user = await withTimeout(this.getCurrentUser(), 8000);
         console.log('User retrieved:', user?.name);
+        if (user) {
+          await this.cacheUser(user);
+          await this.cacheSessionStatus(true);
+        }
         return { session, user };
       }
       
@@ -90,6 +161,16 @@ class AuthService {
       throw new Error('Failed to create session');
     } catch (error) {
       console.error('Error signing in:', error);
+      // In case of network error, try to use cached data
+      if (error instanceof Error && error.message.includes('timeout')) {
+        console.log('Network timeout, checking cached data...');
+        const cachedUser = await this.getCachedUser();
+        const cachedSession = await this.getCachedSessionStatus();
+        if (cachedUser && cachedSession) {
+          console.log('Using cached authentication data');
+          return { session: null, user: cachedUser };
+        }
+      }
       throw error;
     }
   }
@@ -97,37 +178,80 @@ class AuthService {
   // Get current user
   async getCurrentUser(): Promise<User | null> {
     try {
-      const currentAccount = await account.get();
+      const currentAccount = await withTimeout(account.get(), 8000);
       
       if (currentAccount) {
         try {
           // Get user document from database
-          const userDoc = await databases.getDocument(
-            appwriteConfig.databaseId,
-            appwriteConfig.userCollectionId,
-            currentAccount.$id
+          const userDoc = await withTimeout(
+            databases.getDocument(
+              appwriteConfig.databaseId,
+              appwriteConfig.userCollectionId,
+              currentAccount.$id
+            ),
+            10000
           );
           
-          return transformUserFromAppwrite(userDoc) as User;
-        } catch {
+          const user = transformUserFromAppwrite(userDoc) as User;
+          await this.cacheUser(user);
+          return user;
+        } catch (dbError) {
           // If user document doesn't exist, create it
-          console.log('User document not found, creating...');
-          const userDoc = await this.createUserDocument(currentAccount.$id, {
-            name: currentAccount.name,
-            email: currentAccount.email,
-            hasCompletedOnboarding: false,
-            isAvailable: false,
-            skills: [],
-            tools: [],
-          });
-          
-          return userDoc;
+          console.log('User document not found, creating...', dbError);
+          try {
+            const userDoc = await this.createUserDocument(currentAccount.$id, {
+              name: currentAccount.name,
+              email: currentAccount.email,
+              hasCompletedOnboarding: false,
+              isAvailable: false,
+              skills: [],
+              tools: [],
+            });
+            
+            await this.cacheUser(userDoc);
+            return userDoc;
+          } catch (createError) {
+            console.error('Failed to create user document:', createError);
+            // Check if we have cached user data
+            const cachedUser = await this.getCachedUser();
+            if (cachedUser && cachedUser.$id === currentAccount.$id) {
+              console.log('Using cached user data');
+              return cachedUser;
+            }
+            
+            // Return basic user info even if document creation fails
+            const basicUser = {
+              $id: currentAccount.$id,
+              name: currentAccount.name,
+              email: currentAccount.email,
+              hasCompletedOnboarding: false,
+              isAvailable: false,
+              skills: [],
+              tools: [],
+              $collectionId: '',
+              $databaseId: '',
+              $createdAt: '',
+              $updatedAt: '',
+              $permissions: [],
+              $sequence: 0,
+            } as User;
+            
+            await this.cacheUser(basicUser);
+            return basicUser;
+          }
         }
       }
       
       return null;
     } catch (error) {
       console.error('Error getting current user:', error);
+      // Try to return cached user data
+      const cachedUser = await this.getCachedUser();
+      const cachedSession = await this.getCachedSessionStatus();
+      if (cachedUser && cachedSession) {
+        console.log('Network error, using cached user data');
+        return cachedUser;
+      }
       return null;
     }
   }
@@ -136,8 +260,13 @@ class AuthService {
   async signOut() {
     try {
       await account.deleteSession('current');
+      await this.cacheUser(null);
+      await this.cacheSessionStatus(false);
     } catch (error) {
       console.error('Error signing out:', error);
+      // Even if the network call fails, clear local cache
+      await this.cacheUser(null);
+      await this.cacheSessionStatus(false);
       throw error;
     }
   }
@@ -203,9 +332,11 @@ class AuthService {
   // Check if user has active session
   async checkSession() {
     try {
-      const session = await account.getSession('current');
+      const session = await withTimeout(account.getSession('current'), 5000);
       return !!session;
-    } catch {
+    } catch (error) {
+      // In production builds, network timeouts or other issues can cause this to fail
+      console.log('No active session found:', error);
       return false;
     }
   }

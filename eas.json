@@ -9,10 +9,37 @@
       "distribution": "internal"
     },
     "preview": {
-      "distribution": "internal"
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_APPWRITE_ENDPOINT": "https://fra.cloud.appwrite.io/v1",
+        "EXPO_PUBLIC_APPWRITE_PROJECT_ID": "resourcely",
+        "EXPO_PUBLIC_APPWRITE_PLATFORM": "com.rishi04.Resourcelyappify",
+        "EXPO_PUBLIC_APPWRITE_DATABASE_ID": "dbandroid",
+        "EXPO_PUBLIC_APPWRITE_USER_COLLECTION_ID": "users"
+      }
+    },
+    "preview-apk": {
+      "android": {
+        "buildType": "apk"
+      },
+      "distribution": "internal",
+      "env": {
+        "EXPO_PUBLIC_APPWRITE_ENDPOINT": "https://fra.cloud.appwrite.io/v1",
+        "EXPO_PUBLIC_APPWRITE_PROJECT_ID": "resourcely",
+        "EXPO_PUBLIC_APPWRITE_PLATFORM": "com.rishi04.Resourcelyappify",
+        "EXPO_PUBLIC_APPWRITE_DATABASE_ID": "dbandroid",
+        "EXPO_PUBLIC_APPWRITE_USER_COLLECTION_ID": "users"
+      }
     },
     "production": {
-      "autoIncrement": true
+      "autoIncrement": true,
+      "env": {
+        "EXPO_PUBLIC_APPWRITE_ENDPOINT": "https://fra.cloud.appwrite.io/v1",
+        "EXPO_PUBLIC_APPWRITE_PROJECT_ID": "resourcely",
+        "EXPO_PUBLIC_APPWRITE_PLATFORM": "com.rishi04.Resourcelyappify",
+        "EXPO_PUBLIC_APPWRITE_DATABASE_ID": "dbandroid",
+        "EXPO_PUBLIC_APPWRITE_USER_COLLECTION_ID": "users"
+      }
     }
   },
   "submit": {

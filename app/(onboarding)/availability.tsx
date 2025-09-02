@@ -23,18 +23,45 @@ export default function AvailabilityOnboardingScreen() {
     try {
       setIsLoading(true);
       
-      await completeOnboarding({
-        skills,
-        tools,
-        isAvailable,
-      });
+      // Add network connectivity check and retry logic
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          await completeOnboarding({
+            skills,
+            tools,
+            isAvailable,
+          });
+          break; // Success, exit retry loop
+        } catch (error: any) {
+          retryCount++;
+          console.log(`Onboarding attempt ${retryCount} failed:`, error);
+          
+          if (retryCount >= maxRetries) {
+            throw error; // Re-throw after max retries
+          }
+          
+          // Wait before retry (exponential backoff)
+          await new Promise(resolve => setTimeout(resolve, 1000 * retryCount));
+        }
+      }
       
       // Show success animation
       setIsLoading(false);
       setShowSuccess(true);
       
     } catch (error: any) {
-      Alert.alert('Error', error.message || 'Failed to complete onboarding');
+      console.error('Failed to complete onboarding after retries:', error);
+      Alert.alert(
+        'Connection Error', 
+        'Unable to complete setup. Please check your internet connection and try again.',
+        [
+          { text: 'Retry', onPress: handleComplete },
+          { text: 'Skip for now', onPress: () => router.replace('/explore' as any) }
+        ]
+      );
       setIsLoading(false);
     }
   };
