@@ -1,170 +1,219 @@
+import { BroadcastModal, RequestModal } from '@/components/room/RoomModals';
 import { Icon } from '@/components/ui/icon';
 import { Colors } from '@/constants/Colors';
+import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { Broadcast, createBroadcast, getRoomBroadcasts } from '@/lib/broadcasts';
+import { acceptRequest, createRequest, getRoomRequests, Request } from '@/lib/requests';
+import { getRoomById } from '@/lib/rooms';
+import { getAvailableRoomUsers, searchUsers, User } from '@/lib/search';
+import * as Clipboard from 'expo-clipboard';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MessageSquare, Search, Trophy, Zap } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { ArrowLeft, Check, Copy, MessageSquare, Search, Trophy, Zap } from 'lucide-react-native';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-interface RoomMember {
-  id: string;
-  name: string;
-  skills: string[];
-  tools: string[];
+interface RoomMember extends User {
   helpScore: number;
-  isAvailable: boolean;
   lastActive: string;
 }
 
-interface ActiveBroadcast {
-  id: string;
-  title: string;
-  type: 'help' | 'collaboration' | 'announcement';
-  author: {
-    id: string;
-    name: string;
-  };
-  description: string;
+interface ActiveBroadcast extends Broadcast {
   timePosted: string;
-  responses: number;
 }
 
-interface PendingRequest {
-  id: string;
-  title: string;
-  status: 'pending' | 'accepted' | 'returned';
-  requester: {
-    id: string;
-    name: string;
-  };
-  helper?: {
-    id: string;
-    name: string;
-  };
+interface Room {
+  $id: string;
+  name: string;
   description: string;
-  skillsNeeded: string[];
-  createdAt: string;
+  memberCount: number;
 }
 
 export default function RoomScreen() {
   const { id } = useLocalSearchParams();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const { user } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'leaderboard'>('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [copiedRoomCode, setCopiedRoomCode] = useState(false);
+  
+  // Real data state
+  const [roomData, setRoomData] = useState<Room | null>(null);
+  const [members, setMembers] = useState<RoomMember[]>([]);
+  const [broadcasts, setBroadcasts] = useState<ActiveBroadcast[]>([]);
+  const [requests, setRequests] = useState<Request[]>([]);
+  
+  // Modal states
+  const [showBroadcastModal, setShowBroadcastModal] = useState(false);
+  const [showRequestModal, setShowRequestModal] = useState(false);
 
-  // Mock data
-  const roomData = {
-    id: id as string,
-    name: 'React Developers',
-    description: 'A room for React developers to collaborate and share knowledge',
-    memberCount: 24,
+  // Load room data
+  const loadRoomData = useCallback(async () => {
+    if (!id || !user) return;
+    
+    try {
+      setLoading(true);
+      
+      // Load room details
+      const room = await getRoomById(id as string);
+      setRoomData(room);
+      
+      // Load room members
+      const roomMembers = await getAvailableRoomUsers(id as string);
+      const membersWithScores = roomMembers.map(member => ({
+        ...member,
+        helpScore: Math.floor(Math.random() * 200) + 50, // TODO: Calculate real help score
+        lastActive: member.lastActive || new Date().toISOString(),
+      }));
+      setMembers(membersWithScores);
+      
+      // Load broadcasts
+      const roomBroadcasts = await getRoomBroadcasts(id as string);
+      const formattedBroadcasts = roomBroadcasts.map(broadcast => ({
+        ...broadcast,
+        timePosted: formatTimeAgo(broadcast.createdAt),
+      }));
+      setBroadcasts(formattedBroadcasts);
+      
+      // Load requests
+      const roomRequests = await getRoomRequests(id as string);
+      setRequests(roomRequests);
+      
+    } catch (error) {
+      console.error('Error loading room data:', error);
+      Alert.alert('Error', 'Failed to load room data');
+    } finally {
+      setLoading(false);
+    }
+  }, [id, user]);
+
+  const formatTimeAgo = (dateString: string): string => {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} hour${Math.floor(diffInMinutes / 60) > 1 ? 's' : ''} ago`;
+    return `${Math.floor(diffInMinutes / 1440)} day${Math.floor(diffInMinutes / 1440) > 1 ? 's' : ''} ago`;
   };
 
-  const mockMembers: RoomMember[] = [
-    {
-      id: '1',
-      name: 'John Doe',
-      skills: ['React', 'TypeScript', 'Node.js'],
-      tools: ['VS Code', 'Git', 'Docker'],
-      helpScore: 145,
-      isAvailable: true,
-      lastActive: '2 min ago',
-    },
-    {
-      id: '2',
-      name: 'Jane Smith',
-      skills: ['React', 'Redux', 'JavaScript'],
-      tools: ['WebStorm', 'Git', 'Webpack'],
-      helpScore: 132,
-      isAvailable: true,
-      lastActive: '5 min ago',
-    },
-    {
-      id: '3',
-      name: 'Mike Johnson',
-      skills: ['React Native', 'iOS', 'Android'],
-      tools: ['Xcode', 'Android Studio', 'React DevTools'],
-      helpScore: 98,
-      isAvailable: false,
-      lastActive: '1 hour ago',
-    },
-  ];
-
-  const mockBroadcasts: ActiveBroadcast[] = [
-    {
-      id: '1',
-      title: 'Need help with React hooks optimization',
-      type: 'help',
-      author: { id: '4', name: 'Sarah Wilson' },
-      description: 'Struggling with useCallback and useMemo best practices',
-      timePosted: '5 min ago',
-      responses: 3,
-    },
-    {
-      id: '2',
-      title: 'Starting a new e-commerce project',
-      type: 'collaboration',
-      author: { id: '5', name: 'Tom Brown' },
-      description: 'Looking for collaborators on a React/Node.js e-commerce platform',
-      timePosted: '1 hour ago',
-      responses: 7,
-    },
-  ];
-
-  const mockRequests: PendingRequest[] = [
-    {
-      id: '1',
-      title: 'Help with Redux state management',
-      status: 'pending',
-      requester: { id: '6', name: 'Alex Chen' },
-      description: 'Need guidance on complex state management patterns',
-      skillsNeeded: ['Redux', 'React'],
-      createdAt: '30 min ago',
-    },
-    {
-      id: '2',
-      title: 'Code review for authentication system',
-      status: 'accepted',
-      requester: { id: '7', name: 'Lisa Davis' },
-      helper: { id: '1', name: 'John Doe' },
-      description: 'Built JWT authentication, need security review',
-      skillsNeeded: ['Security', 'Node.js', 'JWT'],
-      createdAt: '2 hours ago',
-    },
-  ];
+  useEffect(() => {
+    loadRoomData();
+  }, [loadRoomData]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await loadRoomData();
     setRefreshing(false);
   };
 
-  const filteredMembers = mockMembers.filter(member =>
+  const handleSearch = async (query: string) => {
+    if (!id) return;
+    
+    try {
+      const searchResults = await searchUsers(query, {
+        roomId: id as string,
+        isAvailable: true,
+      });
+      
+      const membersWithScores = searchResults.map(member => ({
+        ...member,
+        helpScore: Math.floor(Math.random() * 200) + 50,
+        lastActive: member.lastActive || new Date().toISOString(),
+      }));
+      
+      setMembers(membersWithScores);
+    } catch (error) {
+      console.error('Error searching members:', error);
+    }
+  };
+
+  const handleCreateBroadcast = async (title: string, description: string, type: 'help' | 'collaboration' | 'announcement') => {
+    if (!user || !id) return;
+    
+    try {
+      await createBroadcast({
+        title,
+        description,
+        type,
+        authorId: user.$id,
+        roomId: id as string,
+      });
+      
+      await loadRoomData(); // Refresh data
+      setShowBroadcastModal(false);
+    } catch (error) {
+      console.error('Error creating broadcast:', error);
+      Alert.alert('Error', 'Failed to create broadcast');
+    }
+  };
+
+  const handleCreateRequest = async (title: string, description: string, skillsNeeded: string[]) => {
+    if (!user || !id) return;
+    
+    try {
+      await createRequest({
+        title,
+        description,
+        requesterId: user.$id,
+        roomId: id as string,
+        skillsNeeded,
+      });
+      
+      await loadRoomData(); // Refresh data
+      setShowRequestModal(false);
+    } catch (error) {
+      console.error('Error creating request:', error);
+      Alert.alert('Error', 'Failed to create request');
+    }
+  };
+
+  const filteredMembers = members.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.skills.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase())) ||
     member.tools.some(tool => tool.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
+  if (loading) {
+    return (
+      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+        <View style={styles.loadingContainer}>
+          <Text style={[styles.loadingText, { color: colors.text }]}>Loading room...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   const renderDashboard = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+    <>
       {/* Active Broadcasts */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Active Broadcasts</Text>
-        {mockBroadcasts.map(broadcast => (
-          <View key={broadcast.id} style={[styles.broadcastCard, { backgroundColor: colors.background }]}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Active Broadcasts</Text>
+          <TouchableOpacity 
+            style={[styles.addButton, { backgroundColor: colors.tint }]}
+            onPress={() => setShowBroadcastModal(true)}
+          >
+            <Text style={styles.addButtonText}>Broadcast</Text>
+          </TouchableOpacity>
+        </View>
+        {broadcasts.map(broadcast => (
+          <View key={broadcast.$id} style={[styles.broadcastCard, { backgroundColor: colors.background }]}>
             <View style={styles.broadcastHeader}>
               <View style={[
                 styles.broadcastType,
@@ -187,7 +236,7 @@ export default function RoomScreen() {
             </Text>
             <View style={styles.broadcastFooter}>
               <Text style={[styles.broadcastAuthor, { color: colors.tabIconDefault }]}>
-                by {broadcast.author.name}
+                by User {broadcast.authorId.substring(0, 8)}
               </Text>
               <Text style={[styles.broadcastResponses, { color: colors.tint }]}>
                 {broadcast.responses} responses
@@ -207,13 +256,20 @@ export default function RoomScreen() {
             placeholder="Search members by name, skills, or tools..."
             placeholderTextColor={colors.tabIconDefault}
             value={searchQuery}
-            onChangeText={setSearchQuery}
+            onChangeText={(text) => {
+              setSearchQuery(text);
+              if (text.trim()) {
+                handleSearch(text);
+              } else {
+                loadRoomData(); // Reset to original data
+              }
+            }}
           />
         </View>
         
         {/* Highlighted Members */}
         {filteredMembers.map(member => (
-          <View key={member.id} style={[styles.memberCard, { backgroundColor: colors.background }]}>
+          <View key={member.$id} style={[styles.memberCard, { backgroundColor: colors.background }]}>
             <View style={styles.memberHeader}>
               <View style={styles.memberInfo}>
                 <Text style={[styles.memberName, { color: colors.text }]}>{member.name}</Text>
@@ -223,7 +279,7 @@ export default function RoomScreen() {
                     { backgroundColor: member.isAvailable ? '#4ECDC4' : colors.tabIconDefault }
                   ]} />
                   <Text style={[styles.statusText, { color: colors.tabIconDefault }]}>
-                    {member.isAvailable ? 'Available' : 'Busy'} • {member.lastActive}
+                    {member.isAvailable ? 'Available' : 'Busy'} • {formatTimeAgo(member.lastActive)}
                   </Text>
                 </View>
               </View>
@@ -256,15 +312,23 @@ export default function RoomScreen() {
           </View>
         ))}
       </View>
-    </ScrollView>
+    </>
   );
 
   const renderRequests = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+    <>
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Room Requests</Text>
-        {mockRequests.map(request => (
-          <View key={request.id} style={[styles.requestCard, { backgroundColor: colors.background }]}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, { color: colors.text }]}>Help Requests</Text>
+          <TouchableOpacity 
+            style={[styles.addButton, { backgroundColor: colors.tint }]}
+            onPress={() => setShowRequestModal(true)}
+          >
+            <Text style={styles.addButtonText}>Request Help</Text>
+          </TouchableOpacity>
+        </View>
+        {requests.map(request => (
+          <View key={request.$id} style={[styles.requestCard, { backgroundColor: colors.background }]}>
             <View style={styles.requestHeader}>
               <View style={[
                 styles.requestStatus,
@@ -284,7 +348,7 @@ export default function RoomScreen() {
                 </Text>
               </View>
               <Text style={[styles.requestTime, { color: colors.tabIconDefault }]}>
-                {request.createdAt}
+                {formatTimeAgo(request.createdAt)}
               </Text>
             </View>
             
@@ -294,7 +358,7 @@ export default function RoomScreen() {
             </Text>
             
             <View style={styles.requestSkills}>
-              {request.skillsNeeded.map((skill, index) => (
+              {request.skillsNeeded.map((skill: string, index: number) => (
                 <View key={index} style={[styles.tag, { backgroundColor: colors.tint + '20' }]}>
                   <Text style={[styles.tagText, { color: colors.tint }]}>{skill}</Text>
                 </View>
@@ -303,28 +367,37 @@ export default function RoomScreen() {
             
             <View style={styles.requestFooter}>
               <Text style={[styles.requestRequester, { color: colors.tabIconDefault }]}>
-                by {request.requester.name}
+                by User {request.requesterId.substring(0, 8)}
               </Text>
-              {request.helper && (
+              {request.helperId && (
                 <Text style={[styles.requestHelper, { color: colors.tint }]}>
-                  helping: {request.helper.name}
+                  helping: User {request.helperId.substring(0, 8)}
                 </Text>
               )}
             </View>
+            
+            {request.status === 'pending' && request.requesterId !== user?.$id && (
+              <TouchableOpacity 
+                style={[styles.acceptButton, { backgroundColor: colors.tint }]}
+                onPress={() => handleAcceptRequest(request.$id)}
+              >
+                <Text style={styles.acceptButtonText}>Accept Request</Text>
+              </TouchableOpacity>
+            )}
           </View>
         ))}
       </View>
-    </ScrollView>
+    </>
   );
 
   const renderLeaderboard = () => (
-    <ScrollView style={styles.tabContent} showsVerticalScrollIndicator={false}>
+    <>
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Room Leaderboard</Text>
-        {mockMembers
+        <Text style={[styles.sectionTitle, { color: colors.text }]}>Help Leaderboard</Text>
+        {members
           .sort((a, b) => b.helpScore - a.helpScore)
           .map((member, index) => (
-            <View key={member.id} style={[styles.leaderboardCard, { backgroundColor: colors.background }]}>
+            <View key={member.$id} style={[styles.leaderboardCard, { backgroundColor: colors.background }]}>
               <View style={styles.leaderboardRank}>
                 <Text style={[styles.rankNumber, { color: colors.tint }]}>#{index + 1}</Text>
               </View>
@@ -338,8 +411,37 @@ export default function RoomScreen() {
             </View>
           ))}
       </View>
-    </ScrollView>
+    </>
   );
+
+  const handleAcceptRequest = async (requestId: string) => {
+    if (!user) return;
+    
+    try {
+      await acceptRequest(requestId, user.$id);
+      await loadRoomData(); // Refresh data
+    } catch (error) {
+      console.error('Error accepting request:', error);
+      Alert.alert('Error', 'Failed to accept request');
+    }
+  };
+
+  const handleCopyRoomCode = async () => {
+    if (!id) return;
+    
+    try {
+      await Clipboard.setStringAsync(id as string);
+      setCopiedRoomCode(true);
+      
+      // Reset the copied state after 2 seconds
+      setTimeout(() => {
+        setCopiedRoomCode(false);
+      }, 2000);
+    } catch (error) {
+      console.error('Error copying room code:', error);
+      Alert.alert('Error', 'Failed to copy room code');
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
@@ -349,9 +451,24 @@ export default function RoomScreen() {
           <Icon name={ArrowLeft} size={24} color={colors.text} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{roomData.name}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{roomData?.name || 'Loading...'}</Text>
+          <View style={styles.roomCodeContainer}>
+            <Text style={[styles.roomCodeLabel, { color: colors.tabIconDefault }]}>Room Code: </Text>
+            <Text style={[styles.roomCodeText, { color: colors.tint }]}>{id || 'Loading...'}</Text>
+            <TouchableOpacity 
+              onPress={handleCopyRoomCode}
+              style={[styles.copyButton, { backgroundColor: copiedRoomCode ? colors.tint + '20' : 'transparent' }]}
+              disabled={!id}
+            >
+              <Icon 
+                name={copiedRoomCode ? Check : Copy} 
+                size={16} 
+                color={copiedRoomCode ? colors.tint : colors.tabIconDefault} 
+              />
+            </TouchableOpacity>
+          </View>
           <Text style={[styles.headerSubtitle, { color: colors.tabIconDefault }]}>
-            {roomData.memberCount} members
+            {roomData?.memberCount || 0} members
           </Text>
         </View>
       </View>
@@ -411,11 +528,29 @@ export default function RoomScreen() {
       </View>
 
       {/* Content */}
-      <RefreshControl refreshing={refreshing} onRefresh={onRefresh}>
+      <ScrollView 
+        style={styles.content}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'requests' && renderRequests()}
         {activeTab === 'leaderboard' && renderLeaderboard()}
-      </RefreshControl>
+      </ScrollView>
+
+      {/* Modals */}
+      <BroadcastModal
+        visible={showBroadcastModal}
+        onClose={() => setShowBroadcastModal(false)}
+        onSubmit={handleCreateBroadcast}
+      />
+      
+      <RequestModal
+        visible={showRequestModal}
+        onClose={() => setShowRequestModal(false)}
+        onSubmit={handleCreateRequest}
+      />
     </SafeAreaView>
   );
 }
@@ -445,6 +580,26 @@ const styles = StyleSheet.create({
   headerSubtitle: {
     fontSize: 14,
     marginTop: 2,
+  },
+  roomCodeContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 2,
+    marginBottom: 2,
+  },
+  roomCodeLabel: {
+    fontSize: 12,
+    fontWeight: '500',
+  },
+  roomCodeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginRight: 6,
+  },
+  copyButton: {
+    padding: 4,
+    borderRadius: 4,
+    marginLeft: 2,
   },
   tabBar: {
     flexDirection: 'row',
@@ -691,5 +846,45 @@ const styles = StyleSheet.create({
   },
   leaderboardScore: {
     fontSize: 14,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    marginTop: 10,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  addButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  addButtonText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  acceptButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 6,
+    marginTop: 8,
+  },
+  acceptButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  content: {
+    flex: 1,
   },
 });

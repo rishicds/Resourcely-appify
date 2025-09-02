@@ -2,17 +2,18 @@ import { Icon } from '@/components/ui/icon';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';
+import { router } from 'expo-router';
 import { ChevronDown, ChevronUp, Hash, LogOut, Plus } from 'lucide-react-native';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Alert,
-    RefreshControl,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -41,6 +42,16 @@ export default function RoomsMainScreen() {
   const [joinCode, setJoinCode] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [showJoinInput, setShowJoinInput] = useState(false);
+
+  // Handle sign out with navigation
+  const handleSignOut = async () => {
+    try {
+      await signOut();
+      router.replace('/(auth)/login' as any);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   // Move mock data to useMemo to avoid dependencies issues
   const mockRooms: Room[] = useMemo(() => [
@@ -250,7 +261,7 @@ export default function RoomsMainScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.headerButton, { backgroundColor: colors.tabIconDefault + '20' }]}
-            onPress={() => signOut()}
+            onPress={handleSignOut}
           >
             <Icon name={LogOut} size={20} color={colors.tabIconDefault} />
           </TouchableOpacity>

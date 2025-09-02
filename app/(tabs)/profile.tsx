@@ -29,6 +29,8 @@ export default function ProfileScreen() {
             try {
               setIsSigningOut(true);
               await signOut();
+              // Navigate to login page after successful sign out
+              router.replace('/(auth)/login' as any);
             } catch (error) {
               console.error('Error signing out:', error);
               Alert.alert('Error', 'Failed to sign out. Please try again.');
@@ -72,19 +74,7 @@ export default function ProfileScreen() {
           marginBottom: 30,
         }}>
           <ThemedText type="title">Profile</ThemedText>
-          <TouchableOpacity
-            onPress={handleEditProfile}
-            style={{
-              backgroundColor: Colors[colorScheme ?? 'light'].tint,
-              paddingHorizontal: 16,
-              paddingVertical: 8,
-              borderRadius: 8,
-            }}
-          >
-            <ThemedText style={{ color: 'white', fontWeight: '600' }}>
-              Edit
-            </ThemedText>
-          </TouchableOpacity>
+          
         </View>
 
         {/* Profile Info */}
