@@ -14,10 +14,8 @@ export default function AvailabilityOnboardingScreen() {
   
   const [isAvailable, setIsAvailable] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [showSuccess, setShowSuccess] = useState(false);
   const { completeOnboarding } = useAuth();
   const animationRef = useRef<LottieView>(null);
-  const successAnimationRef = useRef<LottieView>(null);
 
   const handleComplete = async () => {
     try {
@@ -29,21 +27,13 @@ export default function AvailabilityOnboardingScreen() {
         isAvailable,
       });
       
-      // Show success animation
-      setIsLoading(false);
-      setShowSuccess(true);
-      
+      // Navigate to main app
+      router.replace('/explore' as any);
     } catch (error: any) {
       Alert.alert('Error', error.message || 'Failed to complete onboarding');
+    } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleAnimationFinish = () => {
-    // Wait a bit after animation finishes then redirect
-    setTimeout(() => {
-      router.replace('/explore' as any);
-    }, 500); // 0.5 second buffer after animation completes
   };
 
   const handleBack = () => {
@@ -164,26 +154,6 @@ export default function AvailabilityOnboardingScreen() {
           </View>
         </View>
       </SafeAreaView>
-      
-      {/* Success Animation Overlay */}
-      {showSuccess && (
-        <View style={styles.successOverlay}>
-          <View style={styles.successContainer}>
-            <LottieView
-              ref={successAnimationRef}
-              source={require('@/assets/lottie/Success.json')}
-              autoPlay
-              loop={false}
-              style={styles.successAnimation}
-              onAnimationFinish={handleAnimationFinish}
-            />
-            <Text style={styles.successTitle}>🎉 Setup Complete!</Text>
-            <Text style={styles.successMessage}>
-              Welcome to Resourcely! Let&apos;s explore what&apos;s available.
-            </Text>
-          </View>
-        </View>
-      )}
     </LinearGradient>
   );
 }
@@ -338,49 +308,5 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
-  },
-  successOverlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 1000,
-  },
-  successContainer: {
-    backgroundColor: ClayTheme.colors.background,
-    borderRadius: ClayTheme.borderRadius.large,
-    padding: 32,
-    margin: 24,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 4,
-    },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  successAnimation: {
-    width: 120,
-    height: 120,
-    marginBottom: 20,
-  },
-  successTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: ClayTheme.colors.text.primary,
-    marginBottom: 8,
-    textAlign: 'center',
-  },
-  successMessage: {
-    fontSize: 16,
-    color: ClayTheme.colors.text.secondary,
-    textAlign: 'center',
-    lineHeight: 22,
   },
 });

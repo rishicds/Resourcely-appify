@@ -1,7 +1,5 @@
 import { Icon } from '@/components/ui/icon';
-import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
 import {
   getPublicRooms,
   isUserMemberOfRoom,
@@ -9,6 +7,7 @@ import {
   joinRoomByCode,
   Room
 } from '@/lib/rooms';
+import { clayMorphStyles, ClayTheme } from '@/theme/claymorph';
 import { router } from 'expo-router';
 import { ChevronDown, ChevronUp, Hash, Search } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -27,6 +26,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: ClayTheme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -34,12 +34,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    backgroundColor: ClayTheme.colors.surface,
+    ...ClayTheme.shadows.clay,
+    marginBottom: 4,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
+    color: ClayTheme.colors.text.primary,
   },
   content: {
     flex: 1,
@@ -53,6 +55,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     fontWeight: '500',
+    color: ClayTheme.colors.text.secondary,
   },
   joinSection: {
     marginVertical: 20,
@@ -62,13 +65,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
+    borderRadius: ClayTheme.borderRadius.medium,
     gap: 8,
+    backgroundColor: ClayTheme.colors.surface,
+    ...ClayTheme.shadows.clay,
   },
   joinToggleText: {
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
+    color: ClayTheme.colors.text.primary,
   },
   joinInputContainer: {
     flexDirection: 'row',
@@ -76,32 +82,29 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   joinInput: {
+    ...clayMorphStyles.input,
     flex: 1,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
     fontSize: 16,
+    color: ClayTheme.colors.text.primary,
   },
   joinButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    borderRadius: 8,
+    ...clayMorphStyles.button,
+    backgroundColor: ClayTheme.colors.primary,
     justifyContent: 'center',
+    paddingHorizontal: 20,
   },
   joinButtonText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#ffffff',
   },
   searchSection: {
     marginBottom: 20,
   },
   searchInput: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 12,
-    borderWidth: 1,
+    ...clayMorphStyles.input,
     fontSize: 16,
+    color: ClayTheme.colors.text.primary,
   },
   section: {
     marginBottom: 24,
@@ -110,29 +113,22 @@ const styles = StyleSheet.create({
     fontSize: 20,
     fontWeight: '600',
     marginBottom: 16,
+    color: ClayTheme.colors.text.primary,
   },
   emptyState: {
-    padding: 20,
-    borderRadius: 12,
+    ...clayMorphStyles.container,
     alignItems: 'center',
+    backgroundColor: ClayTheme.colors.clay.light,
   },
   emptyStateText: {
     fontSize: 16,
     textAlign: 'center',
     lineHeight: 24,
+    color: ClayTheme.colors.text.secondary,
   },
   roomCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...clayMorphStyles.card,
+    backgroundColor: ClayTheme.colors.surface,
   },
   roomHeader: {
     flexDirection: 'row',
@@ -144,15 +140,18 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
     flex: 1,
+    color: ClayTheme.colors.text.primary,
   },
   memberCount: {
     fontSize: 14,
     fontWeight: '500',
+    color: ClayTheme.colors.text.secondary,
   },
   roomDescription: {
     fontSize: 14,
     lineHeight: 20,
     marginBottom: 16,
+    color: ClayTheme.colors.text.secondary,
   },
   roomDetails: {
     marginBottom: 16,
@@ -168,7 +167,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: ClayTheme.colors.surface,
+    backgroundColor: ClayTheme.colors.clay.medium,
   },
   remainingAvatar: {
     marginLeft: -8,
@@ -176,35 +176,35 @@ const styles = StyleSheet.create({
   avatarText: {
     fontSize: 12,
     fontWeight: '600',
+    color: ClayTheme.colors.text.primary,
   },
   tagsContainer: {
     flexDirection: 'row',
   },
   tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
+    ...clayMorphStyles.chip,
     marginRight: 6,
+    backgroundColor: ClayTheme.colors.clay.light,
   },
   tagText: {
     fontSize: 12,
     fontWeight: '500',
+    color: ClayTheme.colors.text.secondary,
   },
   roomAction: {
-    paddingVertical: 12,
-    borderRadius: 8,
+    ...clayMorphStyles.button,
+    backgroundColor: ClayTheme.colors.primary,
     alignItems: 'center',
   },
   roomActionText: {
     fontSize: 16,
     fontWeight: '600',
+    color: '#ffffff',
   },
 });
 
 export default function ExploreScreen() {
   const { user } = useAuth();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
   
   const [publicRooms, setPublicRooms] = useState<Room[]>([]);
   const [filteredRooms, setFilteredRooms] = useState<Room[]>([]);
@@ -318,20 +318,20 @@ export default function ExploreScreen() {
             style={[
               styles.avatar,
               { 
-                backgroundColor: colors.tint,
+                backgroundColor: ClayTheme.colors.primary,
                 marginLeft: index > 0 ? -8 : 0,
                 zIndex: visibleCount - index,
               }
             ]}
           >
-            <Text style={[styles.avatarText, { color: colors.background }]}>
+            <Text style={[styles.avatarText, { color: '#ffffff' }]}>
               {String.fromCharCode(65 + index)}
             </Text>
           </View>
         ))}
         {remainingCount > 0 && (
-          <View style={[styles.avatar, styles.remainingAvatar, { backgroundColor: colors.tabIconDefault }]}>
-            <Text style={[styles.avatarText, { color: colors.background }]}>
+          <View style={[styles.avatar, styles.remainingAvatar, { backgroundColor: ClayTheme.colors.text.light }]}>
+            <Text style={[styles.avatarText, { color: '#ffffff' }]}>
               +{remainingCount}
             </Text>
           </View>
@@ -341,15 +341,15 @@ export default function ExploreScreen() {
   };
 
   const renderRoomCard = (room: Room) => (
-    <View key={room.$id} style={[styles.roomCard, { backgroundColor: colors.background }]}>
+    <View key={room.$id} style={styles.roomCard}>
       <View style={styles.roomHeader}>
-        <Text style={[styles.roomName, { color: colors.text }]}>{room.name}</Text>
-        <Text style={[styles.memberCount, { color: colors.tabIconDefault }]}>
+        <Text style={styles.roomName}>{room.name}</Text>
+        <Text style={styles.memberCount}>
           {room.memberCount} members
         </Text>
       </View>
 
-      <Text style={[styles.roomDescription, { color: colors.tabIconDefault }]}>
+      <Text style={styles.roomDescription}>
         {room.description}
       </Text>
 
@@ -359,8 +359,8 @@ export default function ExploreScreen() {
         <View style={styles.tagsContainer}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             {[...room.tools, ...room.skills].slice(0, 4).map((tag, index) => (
-              <View key={index} style={[styles.tag, { backgroundColor: colors.tint + '20' }]}>
-                <Text style={[styles.tagText, { color: colors.tint }]}>{tag}</Text>
+              <View key={index} style={styles.tag}>
+                <Text style={styles.tagText}>{tag}</Text>
               </View>
             ))}
           </ScrollView>
@@ -368,16 +368,10 @@ export default function ExploreScreen() {
       </View>
 
       <TouchableOpacity
-        style={[
-          styles.roomAction,
-          { backgroundColor: colors.tint }
-        ]}
+        style={styles.roomAction}
         onPress={() => handleJoinRoom(room)}
       >
-        <Text style={[
-          styles.roomActionText,
-          { color: colors.background }
-        ]}>
+        <Text style={styles.roomActionText}>
           Join Room
         </Text>
       </TouchableOpacity>
@@ -386,22 +380,22 @@ export default function ExploreScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { backgroundColor: colors.background }]}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Explore Rooms</Text>
+      <SafeAreaView style={styles.container}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle}>Explore Rooms</Text>
         </View>
-        <View style={[styles.loadingContainer, { backgroundColor: colors.background }]}>
-          <Text style={[styles.loadingText, { color: colors.tabIconDefault }]}>Loading rooms...</Text>
+        <View style={styles.loadingContainer}>
+          <Text style={styles.loadingText}>Loading rooms...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background }]}>
-        <Text style={[styles.headerTitle, { color: colors.text }]}>Explore Rooms</Text>
+      <View style={styles.header}>
+        <Text style={styles.headerTitle}>Explore Rooms</Text>
       </View>
 
       <ScrollView
@@ -415,21 +409,16 @@ export default function ExploreScreen() {
         <View style={styles.searchSection}>
           <View style={{ position: 'relative' }}>
             <TextInput
-              style={[styles.searchInput, { 
-                backgroundColor: colors.background,
-                borderColor: colors.tabIconDefault + '30',
-                color: colors.text,
-                paddingLeft: 44,
-              }]}
+              style={[styles.searchInput, { paddingLeft: 44 }]}
               placeholder="Search rooms by name, description, skills, or tools..."
-              placeholderTextColor={colors.tabIconDefault}
+              placeholderTextColor={ClayTheme.colors.text.light}
               value={searchQuery}
               onChangeText={setSearchQuery}
             />
             <Icon 
               name={Search} 
               size={20} 
-              color={colors.tabIconDefault}
+              color={ClayTheme.colors.text.light}
               style={{
                 position: 'absolute',
                 left: 14,
@@ -442,40 +431,36 @@ export default function ExploreScreen() {
         {/* Join Room Section */}
         <View style={styles.joinSection}>
           <TouchableOpacity
-            style={[styles.joinToggle, { backgroundColor: colors.tint + '10' }]}
+            style={styles.joinToggle}
             onPress={() => setShowJoinInput(!showJoinInput)}
           >
-            <Icon name={Hash} size={20} color={colors.tint} />
-            <Text style={[styles.joinToggleText, { color: colors.tint }]}>
+            <Icon name={Hash} size={20} color={ClayTheme.colors.primary} />
+            <Text style={styles.joinToggleText}>
               Join with Room Code
             </Text>
             <Icon 
               name={showJoinInput ? ChevronUp : ChevronDown} 
               size={16} 
-              color={colors.tint} 
+              color={ClayTheme.colors.primary} 
             />
           </TouchableOpacity>
 
           {showJoinInput && (
             <View style={styles.joinInputContainer}>
               <TextInput
-                style={[styles.joinInput, { 
-                  backgroundColor: colors.background,
-                  borderColor: colors.tabIconDefault + '30',
-                  color: colors.text 
-                }]}
+                style={styles.joinInput}
                 placeholder="Enter room code"
-                placeholderTextColor={colors.tabIconDefault}
+                placeholderTextColor={ClayTheme.colors.text.light}
                 value={joinCode}
                 onChangeText={setJoinCode}
                 autoCapitalize="characters"
                 autoCorrect={false}
               />
               <TouchableOpacity
-                style={[styles.joinButton, { backgroundColor: colors.tint }]}
+                style={styles.joinButton}
                 onPress={handleJoinWithCode}
               >
-                <Text style={[styles.joinButtonText, { color: colors.background }]}>
+                <Text style={styles.joinButtonText}>
                   Join
                 </Text>
               </TouchableOpacity>
@@ -485,12 +470,12 @@ export default function ExploreScreen() {
 
         {/* Discover Rooms */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>
+          <Text style={styles.sectionTitle}>
             {searchQuery ? `Search Results (${filteredRooms.length})` : 'Discover Rooms'}
           </Text>
           {filteredRooms.length === 0 ? (
-            <View style={[styles.emptyState, { backgroundColor: colors.tabIconDefault + '10' }]}>
-              <Text style={[styles.emptyStateText, { color: colors.tabIconDefault }]}>
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateText}>
                 {searchQuery 
                   ? `No rooms found matching "${searchQuery}". Try different keywords.`
                   : 'No public rooms available to join at the moment.'

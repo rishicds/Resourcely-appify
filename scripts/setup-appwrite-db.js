@@ -367,7 +367,7 @@ async function setupDatabase() {
   
   try {
     // Setup collections in order (dependencies first)
-    const setupOrder = ['users', 'rooms', 'room_members', 'requests', 'broadcasts'];
+    const setupOrder = ['users', 'rooms', 'room_members', 'requests', 'broadcasts', 'borrows', 'messages'];
     
     for (const collectionId of setupOrder) {
       const collectionSchema = collections[collectionId];
@@ -381,6 +381,8 @@ async function setupDatabase() {
     console.log('EXPO_PUBLIC_APPWRITE_REQUESTS_COLLECTION_ID=requests');
     console.log('EXPO_PUBLIC_APPWRITE_BROADCASTS_COLLECTION_ID=broadcasts');
     console.log('EXPO_PUBLIC_APPWRITE_ROOM_MEMBERS_COLLECTION_ID=room_members');
+    console.log('EXPO_PUBLIC_APPWRITE_BORROWS_COLLECTION_ID=borrows');
+    console.log('EXPO_PUBLIC_APPWRITE_MESSAGES_COLLECTION_ID=messages');
     
   } catch (error) {
     console.error('\n💥 Database setup failed:', error.message);

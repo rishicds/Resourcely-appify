@@ -9,6 +9,7 @@ import {
   joinRoomByCode,
   Room
 } from '@/lib/rooms';
+import { clayMorphStyles, ClayTheme } from '@/theme/claymorph';
 import { router } from 'expo-router';
 import { ChevronDown, ChevronUp, Hash, LogOut, Plus, Search } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -27,6 +28,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: ClayTheme.colors.background,
   },
   header: {
     flexDirection: 'row',
@@ -34,12 +36,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    backgroundColor: ClayTheme.colors.surface,
+    ...ClayTheme.shadows.clay,
   },
   headerTitle: {
     fontSize: 28,
     fontWeight: 'bold',
+    color: ClayTheme.colors.text.primary,
   },
   headerActions: {
     flexDirection: 'row',
@@ -48,9 +51,9 @@ const styles = StyleSheet.create({
   headerButton: {
     width: 40,
     height: 40,
-    borderRadius: 20,
     justifyContent: 'center',
     alignItems: 'center',
+    ...clayMorphStyles.button,
   },
   content: {
     flex: 1,
@@ -64,6 +67,7 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     fontWeight: '500',
+    color: ClayTheme.colors.text.secondary,
   },
   joinSection: {
     marginVertical: 20,
@@ -73,13 +77,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 12,
     gap: 8,
+    ...clayMorphStyles.button,
   },
   joinToggleText: {
     flex: 1,
     fontSize: 16,
     fontWeight: '500',
+    color: ClayTheme.colors.text.primary,
   },
   joinInputContainer: {
     flexDirection: 'row',
@@ -90,14 +95,15 @@ const styles = StyleSheet.create({
     flex: 1,
     paddingHorizontal: 16,
     paddingVertical: 12,
-    borderRadius: 8,
-    borderWidth: 1,
     fontSize: 16,
+    ...clayMorphStyles.input,
+    color: ClayTheme.colors.text.primary,
   },
   joinButton: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    ...clayMorphStyles.button,
+    backgroundColor: ClayTheme.colors.primary,
     justifyContent: 'center',
   },
   joinButtonText: {

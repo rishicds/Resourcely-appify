@@ -1,16 +1,55 @@
+import { ClayTheme, clayMorphStyles } from '@/theme/claymorph';
+import { LinearGradient } from 'expo-linear-gradient';
 import { router, useLocalSearchParams } from 'expo-router';
-import React, { useState } from 'react';
+import LottieView from 'lottie-react-native';
+import React, { useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const PREDEFINED_TOOLS = [
-  'VS Code', 'Figma', 'Adobe Photoshop', 'Adobe Illustrator', 'Canva',
-  'Notion', 'Slack', 'Discord', 'Zoom', 'Teams', 'GitHub', 'GitLab',
-  'Jira', 'Trello', 'Asana', 'Monday.com', 'ClickUp', 'Linear',
-  'Docker', 'AWS', 'Google Cloud', 'Azure', 'Vercel', 'Netlify',
-  'Postman', 'Insomnia', 'Chrome DevTools', 'Firebase', 'Supabase',
-  'MongoDB', 'PostgreSQL', 'MySQL', 'Redis', 'Prisma', 'TypeORM'
-];
+const TOOL_CATEGORIES = {
+  'Development Tools': [
+    'VS Code', 'IntelliJ IDEA', 'Eclipse', 'Sublime Text', 'Atom',
+    'Vim', 'Emacs', 'WebStorm', 'PyCharm', 'Android Studio',
+    'Xcode', 'Git', 'GitHub', 'GitLab', 'Bitbucket', 'SVN',
+    'Docker', 'Kubernetes', 'Jenkins', 'Travis CI', 'CircleCI'
+  ],
+  'Design & Creative Tools': [
+    'Figma', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD',
+    'Sketch', 'Canva', 'Adobe InDesign', 'Adobe After Effects',
+    'Adobe Premiere Pro', 'Final Cut Pro', 'Blender', 'AutoCAD',
+    'SketchUp', 'Procreate', 'Affinity Designer', 'Framer'
+  ],
+  'Communication & Collaboration': [
+    'Slack', 'Discord', 'Microsoft Teams', 'Zoom', 'Google Meet',
+    'Skype', 'Notion', 'Confluence', 'SharePoint', 'Miro',
+    'Mural', 'Whimsical', 'Loom', 'Calendly', 'Doodle'
+  ],
+  'Project Management': [
+    'Jira', 'Trello', 'Asana', 'Monday.com', 'ClickUp', 'Linear',
+    'Basecamp', 'Wrike', 'Smartsheet', 'Airtable', 'Todoist',
+    'Microsoft Project', 'Gantt charts', 'Scrum boards', 'Kanban'
+  ],
+  'Cloud & Infrastructure': [
+    'AWS', 'Google Cloud', 'Microsoft Azure', 'Vercel', 'Netlify',
+    'Heroku', 'DigitalOcean', 'Linode', 'Cloudflare', 'Firebase',
+    'Supabase', 'MongoDB Atlas', 'Railway', 'Render'
+  ],
+  'API & Testing Tools': [
+    'Postman', 'Insomnia', 'Thunder Client', 'Swagger', 'Curl',
+    'Jest', 'Cypress', 'Selenium', 'Playwright', 'TestCafe',
+    'Mocha', 'Chai', 'Enzyme', 'React Testing Library'
+  ],
+  'Database & Analytics': [
+    'MongoDB', 'PostgreSQL', 'MySQL', 'SQLite', 'Redis',
+    'Elasticsearch', 'Neo4j', 'Cassandra', 'DynamoDB',
+    'Google Analytics', 'Mixpanel', 'Amplitude', 'Hotjar'
+  ],
+  'Business & Productivity': [
+    'Microsoft Office', 'Google Workspace', 'Excel', 'PowerPoint',
+    'Word', 'Sheets', 'Docs', 'Slides', 'Evernote', 'OneNote',
+    'HubSpot', 'Salesforce', 'Zendesk', 'Intercom', 'Mailchimp'
+  ]
+};
 
 export default function ToolsOnboardingScreen() {
   const params = useLocalSearchParams();
@@ -18,12 +57,22 @@ export default function ToolsOnboardingScreen() {
   
   const [selectedTools, setSelectedTools] = useState<string[]>([]);
   const [customTool, setCustomTool] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Development Tools']);
+  const animationRef = useRef<LottieView>(null);
 
   const toggleTool = (tool: string) => {
     setSelectedTools(prev => 
       prev.includes(tool) 
         ? prev.filter(t => t !== tool)
         : [...prev, tool]
+    );
+  };
+
+  const toggleCategory = (category: string) => {
+    setExpandedCategories(prev =>
+      prev.includes(category)
+        ? prev.filter(c => c !== category)
+        : [...prev, category]
     );
   };
 
@@ -59,107 +108,152 @@ export default function ToolsOnboardingScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
-        <View style={styles.content}>
-          <View style={styles.header}>
-            <Text style={styles.title}>What tools do you use?</Text>
-            <Text style={styles.subtitle}>
-              Select the tools and resources you&apos;re familiar with. This helps match you with relevant projects.
-            </Text>
-          </View>
+    <LinearGradient
+      colors={ClayTheme.colors.gradient.clay}
+      style={styles.container}
+    >
+      <SafeAreaView style={styles.safeArea}>
+        <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+          <View style={styles.content}>
+            <View style={styles.header}>
+              <View style={styles.animationContainer}>
+                <LottieView
+                  ref={animationRef}
+                  source={require('@/assets/lottie/skills.json')}
+                  autoPlay
+                  loop
+                  style={styles.animation}
+                />
+              </View>
+              <Text style={styles.title}>What tools do you use?</Text>
+              <Text style={styles.subtitle}>
+                Select the tools and resources you&apos;re familiar with. This helps match you with relevant projects.
+              </Text>
+            </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Popular Tools</Text>
-            <View style={styles.toolsGrid}>
-              {PREDEFINED_TOOLS.map((tool) => (
+            {Object.entries(TOOL_CATEGORIES).map(([category, tools]) => (
+              <View key={category} style={styles.categorySection}>
                 <TouchableOpacity
-                  key={tool}
-                  style={[
-                    styles.toolChip,
-                    selectedTools.includes(tool) && styles.toolChipSelected
-                  ]}
-                  onPress={() => toggleTool(tool)}
+                  style={[styles.categoryHeader, clayMorphStyles.button]}
+                  onPress={() => toggleCategory(category)}
                 >
-                  <Text style={[
-                    styles.toolChipText,
-                    selectedTools.includes(tool) && styles.toolChipTextSelected
-                  ]}>
-                    {tool}
+                  <Text style={styles.categoryTitle}>{category}</Text>
+                  <Text style={styles.categoryCount}>
+                    ({tools.filter(tool => selectedTools.includes(tool)).length}/{tools.length})
                   </Text>
                 </TouchableOpacity>
-              ))}
-            </View>
-          </View>
 
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Add Custom Tool</Text>
-            <View style={styles.customToolContainer}>
-              <TextInput
-                style={styles.input}
-                value={customTool}
-                onChangeText={setCustomTool}
-                placeholder="Enter a tool or resource..."
-                onSubmitEditing={addCustomTool}
-              />
-              <TouchableOpacity 
-                style={styles.addButton}
-                onPress={addCustomTool}
-              >
-                <Text style={styles.addButtonText}>Add</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          {selectedTools.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.sectionTitle}>Your Selected Tools ({selectedTools.length})</Text>
-              <View style={styles.selectedToolsContainer}>
-                {selectedTools.map((tool) => (
-                  <View key={tool} style={styles.selectedToolChip}>
-                    <Text style={styles.selectedToolText}>{tool}</Text>
-                    <TouchableOpacity
-                      style={styles.removeButton}
-                      onPress={() => removeTool(tool)}
-                    >
-                      <Text style={styles.removeButtonText}>×</Text>
-                    </TouchableOpacity>
+                {expandedCategories.includes(category) && (
+                  <View style={styles.toolsGrid}>
+                    {tools.map((tool) => (
+                      <TouchableOpacity
+                        key={tool}
+                        style={[
+                          styles.toolChip,
+                          clayMorphStyles.chip,
+                          selectedTools.includes(tool) && [styles.toolChipSelected, clayMorphStyles.chipSelected]
+                        ]}
+                        onPress={() => toggleTool(tool)}
+                      >
+                        <Text style={[
+                          styles.toolChipText,
+                          selectedTools.includes(tool) && styles.toolChipTextSelected
+                        ]}>
+                          {tool}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
                   </View>
-                ))}
+                )}
+              </View>
+            ))}
+
+            <View style={[styles.section, clayMorphStyles.card]}>
+              <Text style={styles.sectionTitle}>Add Custom Tool</Text>
+              <View style={styles.customToolContainer}>
+                <TextInput
+                  style={[styles.input, clayMorphStyles.input]}
+                  value={customTool}
+                  onChangeText={setCustomTool}
+                  placeholder="Enter a tool..."
+                  placeholderTextColor={ClayTheme.colors.text.light}
+                  onSubmitEditing={addCustomTool}
+                />
+                <TouchableOpacity 
+                  style={[styles.addButton, clayMorphStyles.button]}
+                  onPress={addCustomTool}
+                >
+                  <LinearGradient
+                    colors={ClayTheme.colors.gradient.accent}
+                    style={styles.addButtonGradient}
+                  >
+                    <Text style={styles.addButtonText}>Add</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
               </View>
             </View>
-          )}
-        </View>
-      </ScrollView>
 
-      <View style={styles.footer}>
-        <View style={styles.footerButtons}>
-          <TouchableOpacity
-            style={styles.backButton}
-            onPress={handleBack}
-          >
-            <Text style={styles.backButtonText}>Back</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[styles.nextButton, selectedTools.length === 0 && styles.nextButtonDisabled]}
-            onPress={handleNext}
-            disabled={selectedTools.length === 0}
-          >
-            <Text style={styles.nextButtonText}>
-              Next: Availability
-            </Text>
-          </TouchableOpacity>
+            {selectedTools.length > 0 && (
+              <View style={[styles.section, clayMorphStyles.card]}>
+                <Text style={styles.sectionTitle}>Your Selected Tools ({selectedTools.length})</Text>
+                <View style={styles.selectedToolsContainer}>
+                  {selectedTools.map((tool) => (
+                    <View key={tool} style={[styles.selectedToolChip, clayMorphStyles.chip]}>
+                      <Text style={styles.selectedToolText}>{tool}</Text>
+                      <TouchableOpacity
+                        style={styles.removeButton}
+                        onPress={() => removeTool(tool)}
+                      >
+                        <Text style={styles.removeButtonText}>×</Text>
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                </View>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        <View style={styles.footer}>
+          <View style={styles.footerButtons}>
+            <TouchableOpacity
+              style={[styles.backButton, clayMorphStyles.button]}
+              onPress={handleBack}
+            >
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.nextButton,
+                clayMorphStyles.button,
+                selectedTools.length === 0 && styles.nextButtonDisabled
+              ]}
+              onPress={handleNext}
+              disabled={selectedTools.length === 0}
+            >
+              <LinearGradient
+                colors={selectedTools.length > 0 ? ClayTheme.colors.gradient.primary : ['#9ca3af', '#9ca3af'] as const}
+                style={styles.nextButtonGradient}
+              >
+                <Text style={styles.nextButtonText}>
+                  Next: Availability
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
-    </SafeAreaView>
+      </SafeAreaView>
+    </LinearGradient>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+  },
+  safeArea: {
+    flex: 1,
   },
   scrollView: {
     flex: 1,
@@ -171,47 +265,77 @@ const styles = StyleSheet.create({
   },
   header: {
     marginBottom: 32,
+    alignItems: 'center',
+  },
+  animationContainer: {
+    height: 150,
+    width: 150,
+    marginBottom: 20,
+  },
+  animation: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: '#1f2937',
+    color: ClayTheme.colors.text.primary,
     marginBottom: 8,
+    textAlign: 'center',
   },
   subtitle: {
     fontSize: 16,
-    color: '#6b7280',
+    color: ClayTheme.colors.text.secondary,
     lineHeight: 24,
+    textAlign: 'center',
+    paddingHorizontal: 16,
+  },
+  categorySection: {
+    marginBottom: 20,
+  },
+  categoryHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  categoryTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: ClayTheme.colors.text.primary,
+  },
+  categoryCount: {
+    fontSize: 14,
+    color: ClayTheme.colors.text.secondary,
+    fontWeight: '500',
   },
   section: {
-    marginBottom: 32,
+    marginBottom: 24,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
+    color: ClayTheme.colors.text.primary,
     marginBottom: 16,
   },
   toolsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
+    marginTop: 8,
   },
   toolChip: {
-    backgroundColor: '#f3f4f6',
     paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
+    paddingVertical: 10,
+    borderRadius: ClayTheme.borderRadius.large,
+    margin: 2,
   },
   toolChipSelected: {
-    backgroundColor: '#10b981',
-    borderColor: '#10b981',
+    transform: [{ scale: 0.98 }],
   },
   toolChipText: {
     fontSize: 14,
-    color: '#374151',
+    color: ClayTheme.colors.text.primary,
     fontWeight: '500',
   },
   toolChipTextSelected: {
@@ -219,28 +343,30 @@ const styles = StyleSheet.create({
   },
   customToolContainer: {
     flexDirection: 'row',
-    gap: 8,
+    gap: 12,
+    alignItems: 'center',
   },
   input: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#d1d5db',
-    borderRadius: 8,
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
-    backgroundColor: '#f9fafb',
+    color: ClayTheme.colors.text.primary,
   },
   addButton: {
-    backgroundColor: '#10b981',
+    borderRadius: ClayTheme.borderRadius.medium,
+    overflow: 'hidden',
+  },
+  addButtonGradient: {
     paddingHorizontal: 20,
     paddingVertical: 12,
-    borderRadius: 8,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   addButtonText: {
     color: '#fff',
     fontWeight: '600',
+    fontSize: 14,
   },
   selectedToolsContainer: {
     flexDirection: 'row',
@@ -248,17 +374,15 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   selectedToolChip: {
-    backgroundColor: '#d1fae5',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
   },
   selectedToolText: {
     fontSize: 14,
-    color: '#065f46',
+    color: ClayTheme.colors.accent,
     fontWeight: '500',
   },
   removeButton: {
@@ -268,6 +392,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#ef4444',
     justifyContent: 'center',
     alignItems: 'center',
+    ...ClayTheme.shadows.clay,
   },
   removeButtonText: {
     color: '#fff',
@@ -279,10 +404,8 @@ const styles = StyleSheet.create({
     bottom: 0,
     left: 0,
     right: 0,
-    backgroundColor: '#fff',
     padding: 24,
-    borderTopWidth: 1,
-    borderTopColor: '#e5e7eb',
+    backgroundColor: 'transparent',
   },
   footerButtons: {
     flexDirection: 'row',
@@ -290,25 +413,28 @@ const styles = StyleSheet.create({
   },
   backButton: {
     flex: 1,
-    backgroundColor: '#f3f4f6',
     paddingVertical: 16,
-    borderRadius: 8,
+    borderRadius: ClayTheme.borderRadius.medium,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   backButtonText: {
-    color: '#374151',
+    color: ClayTheme.colors.text.primary,
     fontSize: 16,
     fontWeight: '600',
   },
   nextButton: {
     flex: 2,
-    backgroundColor: '#10b981',
+    borderRadius: ClayTheme.borderRadius.medium,
+    overflow: 'hidden',
+  },
+  nextButtonGradient: {
     paddingVertical: 16,
-    borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   nextButtonDisabled: {
-    backgroundColor: '#9ca3af',
+    opacity: 0.6,
   },
   nextButtonText: {
     color: '#fff',

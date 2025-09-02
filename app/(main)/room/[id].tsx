@@ -1,24 +1,13 @@
-import { GroupChat } from '@/components/room/GroupChat';
-import { BorrowModal, BroadcastModal, RequestModal } from '@/components/room/RoomModals';
+import { BroadcastModal, RequestModal } from '@/components/room/RoomModals';
 import { Icon } from '@/components/ui/icon';
-import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
-import { useColorScheme } from '@/hooks/useColorScheme';
-import {
-  approveBorrowRequest,
-  BorrowRequest,
-  createBorrowRequest,
-  getRoomBorrowRequests,
-  markAsBorrowed,
-  markAsReturned
-} from '@/lib/borrows';
 import { Broadcast, createBroadcast, getRoomBroadcasts } from '@/lib/broadcasts';
 import { acceptRequest, createRequest, getRoomRequests, Request } from '@/lib/requests';
 import { getRoomById } from '@/lib/rooms';
 import { getAvailableRoomUsers, searchUsers, User } from '@/lib/search';
-import * as Clipboard from 'expo-clipboard';
+import { ClayTheme } from '@/theme/claymorph';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, Check, Copy, MessageSquare, Package, Search, Trophy, Users, Zap } from 'lucide-react-native';
+import { ArrowLeft, MessageSquare, Search, Trophy, Zap } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -50,27 +39,22 @@ interface Room {
 
 export default function RoomScreen() {
   const { id } = useLocalSearchParams();
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
   const { user } = useAuth();
   
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'leaderboard' | 'borrows' | 'chat'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'leaderboard'>('dashboard');
   const [loading, setLoading] = useState(true);
-  const [copiedRoomCode, setCopiedRoomCode] = useState(false);
   
   // Real data state
   const [roomData, setRoomData] = useState<Room | null>(null);
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [broadcasts, setBroadcasts] = useState<ActiveBroadcast[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
-  const [borrowRequests, setBorrowRequests] = useState<BorrowRequest[]>([]);
   
   // Modal states
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
-  const [showBorrowModal, setShowBorrowModal] = useState(false);
 
   // Load room data
   const loadRoomData = useCallback(async () => {
@@ -103,10 +87,6 @@ export default function RoomScreen() {
       // Load requests
       const roomRequests = await getRoomRequests(id as string);
       setRequests(roomRequests);
-      
-      // Load borrow requests
-      const roomBorrowRequests = await getRoomBorrowRequests(id as string);
-      setBorrowRequests(roomBorrowRequests);
       
     } catch (error) {
       console.error('Error loading room data:', error);
@@ -198,61 +178,6 @@ export default function RoomScreen() {
     }
   };
 
-  const handleCreateBorrowRequest = async (data: {
-    title: string;
-    description: string;
-    category: string;
-    expectedReturnDate?: string;
-  }) => {
-    if (!user || !id) return;
-    
-    try {
-      await createBorrowRequest({
-        ...data,
-        borrowerId: user.$id,
-        roomId: id as string,
-      });
-      
-      await loadRoomData(); // Refresh data
-      setShowBorrowModal(false);
-    } catch (error) {
-      console.error('Error creating borrow request:', error);
-      Alert.alert('Error', 'Failed to create borrow request');
-    }
-  };
-
-  const handleApproveBorrowRequest = async (requestId: string) => {
-    if (!user) return;
-    
-    try {
-      await approveBorrowRequest(requestId, user.$id);
-      await loadRoomData(); // Refresh data
-    } catch (error) {
-      console.error('Error approving borrow request:', error);
-      Alert.alert('Error', 'Failed to approve borrow request');
-    }
-  };
-
-  const handleMarkAsBorrowed = async (requestId: string) => {
-    try {
-      await markAsBorrowed(requestId);
-      await loadRoomData(); // Refresh data
-    } catch (error) {
-      console.error('Error marking as borrowed:', error);
-      Alert.alert('Error', 'Failed to mark as borrowed');
-    }
-  };
-
-  const handleMarkAsReturned = async (requestId: string) => {
-    try {
-      await markAsReturned(requestId);
-      await loadRoomData(); // Refresh data
-    } catch (error) {
-      console.error('Error marking as returned:', error);
-      Alert.alert('Error', 'Failed to mark as returned');
-    }
-  };
-
   const filteredMembers = members.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.skills.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -261,120 +186,104 @@ export default function RoomScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+      <SafeAreaView style={styles.container}>
         <View style={styles.loadingContainer}>
-          <Text style={[styles.loadingText, { color: colors.text }]}>Loading room...</Text>
+          <Text style={styles.loadingText}>Loading room...</Text>
         </View>
       </SafeAreaView>
     );
   }
 
   const renderDashboard = () => (
-    <>
+    <View style={styles.content}>
       {/* Active Broadcasts */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Active Broadcasts</Text>
+          <Text style={styles.sectionTitle}>Active Broadcasts</Text>
           <TouchableOpacity 
-            style={[styles.addButton, { backgroundColor: colors.tint }]}
+            style={styles.clayButton}
             onPress={() => setShowBroadcastModal(true)}
           >
-            <Text style={styles.addButtonText}>Broadcast</Text>
+            <Text style={styles.clayButtonText}>Broadcast</Text>
           </TouchableOpacity>
         </View>
         {broadcasts.map(broadcast => (
-          <View key={broadcast.$id} style={[styles.broadcastCard, { backgroundColor: colors.background }]}>
+          <View key={broadcast.$id} style={styles.clayCard}>
             <View style={styles.broadcastHeader}>
-              <View style={[
-                styles.broadcastType,
-                { backgroundColor: broadcast.type === 'help' ? '#FF6B6B20' : '#4ECDC420' }
-              ]}>
-                <Text style={[
-                  styles.broadcastTypeText,
-                  { color: broadcast.type === 'help' ? '#FF6B6B' : '#4ECDC4' }
-                ]}>
+              <View style={[styles.tag, { backgroundColor: ClayTheme.colors.clay.medium }]}>
+                <Text style={[styles.tagText, { color: ClayTheme.colors.text.secondary }]}>
                   {broadcast.type}
                 </Text>
               </View>
-              <Text style={[styles.broadcastTime, { color: colors.tabIconDefault }]}>
-                {broadcast.timePosted}
-              </Text>
+              <Text style={styles.timeText}>{broadcast.timePosted}</Text>
             </View>
-            <Text style={[styles.broadcastTitle, { color: colors.text }]}>{broadcast.title}</Text>
-            <Text style={[styles.broadcastDescription, { color: colors.tabIconDefault }]}>
-              {broadcast.description}
-            </Text>
-            <View style={styles.broadcastFooter}>
-              <Text style={[styles.broadcastAuthor, { color: colors.tabIconDefault }]}>
-                by User {broadcast.authorId.substring(0, 8)}
-              </Text>
-              <Text style={[styles.broadcastResponses, { color: colors.tint }]}>
-                {broadcast.responses} responses
-              </Text>
+            <Text style={styles.cardTitle}>{broadcast.title}</Text>
+            <Text style={styles.cardDescription}>{broadcast.description}</Text>
+            <View style={styles.cardFooter}>
+              <Text style={styles.authorText}>by User {broadcast.authorId.substring(0, 8)}</Text>
+              <Text style={styles.responseText}>{broadcast.responses} responses</Text>
             </View>
           </View>
         ))}
       </View>
 
-      {/* Search/Filter Members */}
+      {/* Search Members */}
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Room Members</Text>
-        <View style={styles.searchContainer}>
-          <Icon name={Search} size={20} color={colors.tabIconDefault} />
+        <Text style={styles.sectionTitle}>Room Members</Text>
+        <View style={styles.claySearchContainer}>
+          <Icon name={Search} size={20} color={ClayTheme.colors.text.light} />
           <TextInput
-            style={[styles.searchInput, { color: colors.text }]}
-            placeholder="Search members by name, skills, or tools..."
-            placeholderTextColor={colors.tabIconDefault}
+            style={styles.claySearchInput}
+            placeholder="Search members..."
+            placeholderTextColor={ClayTheme.colors.text.light}
             value={searchQuery}
             onChangeText={(text) => {
               setSearchQuery(text);
               if (text.trim()) {
                 handleSearch(text);
               } else {
-                loadRoomData(); // Reset to original data
+                loadRoomData();
               }
             }}
           />
         </View>
         
-        {/* Highlighted Members */}
+        {/* Members List */}
         {filteredMembers.map(member => (
-          <View key={member.$id} style={[styles.memberCard, { backgroundColor: colors.background }]}>
+          <View key={member.$id} style={styles.clayCard}>
             <View style={styles.memberHeader}>
               <View style={styles.memberInfo}>
-                <Text style={[styles.memberName, { color: colors.text }]}>{member.name}</Text>
+                <Text style={styles.cardTitle}>{member.name}</Text>
                 <View style={styles.memberStatus}>
                   <View style={[
-                    styles.statusIndicator,
-                    { backgroundColor: member.isAvailable ? '#4ECDC4' : colors.tabIconDefault }
+                    styles.statusDot,
+                    { backgroundColor: member.isAvailable ? ClayTheme.colors.accent : ClayTheme.colors.text.light }
                   ]} />
-                  <Text style={[styles.statusText, { color: colors.tabIconDefault }]}>
+                  <Text style={styles.statusText}>
                     {member.isAvailable ? 'Available' : 'Busy'} • {formatTimeAgo(member.lastActive)}
                   </Text>
                 </View>
               </View>
-              <Text style={[styles.helpScore, { color: colors.tint }]}>
-                {member.helpScore} pts
-              </Text>
+              <Text style={styles.scoreText}>{member.helpScore} pts</Text>
             </View>
             
-            <View style={styles.memberTags}>
-              <Text style={[styles.tagLabel, { color: colors.tabIconDefault }]}>Skills:</Text>
+            <View style={styles.tagsContainer}>
+              <Text style={styles.tagLabel}>Skills:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {member.skills.map((skill, index) => (
-                  <View key={index} style={[styles.tag, { backgroundColor: colors.tint + '20' }]}>
-                    <Text style={[styles.tagText, { color: colors.tint }]}>{skill}</Text>
+                  <View key={index} style={styles.tag}>
+                    <Text style={styles.tagText}>{skill}</Text>
                   </View>
                 ))}
               </ScrollView>
             </View>
             
-            <View style={styles.memberTags}>
-              <Text style={[styles.tagLabel, { color: colors.tabIconDefault }]}>Tools:</Text>
+            <View style={styles.tagsContainer}>
+              <Text style={styles.tagLabel}>Tools:</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 {member.tools.map((tool, index) => (
-                  <View key={index} style={[styles.tag, { backgroundColor: colors.tabIconDefault + '20' }]}>
-                    <Text style={[styles.tagText, { color: colors.tabIconDefault }]}>{tool}</Text>
+                  <View key={index} style={styles.tag}>
+                    <Text style={styles.tagText}>{tool}</Text>
                   </View>
                 ))}
               </ScrollView>
@@ -382,233 +291,84 @@ export default function RoomScreen() {
           </View>
         ))}
       </View>
-    </>
+    </View>
   );
 
   const renderRequests = () => (
-    <>
+    <View style={styles.content}>
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Help Requests</Text>
+          <Text style={styles.sectionTitle}>Help Requests</Text>
           <TouchableOpacity 
-            style={[styles.addButton, { backgroundColor: colors.tint }]}
+            style={styles.clayButton}
             onPress={() => setShowRequestModal(true)}
           >
-            <Text style={styles.addButtonText}>Request Help</Text>
+            <Text style={styles.clayButtonText}>Request Help</Text>
           </TouchableOpacity>
         </View>
         {requests.map(request => (
-          <View key={request.$id} style={[styles.requestCard, { backgroundColor: colors.background }]}>
-            <View style={styles.requestHeader}>
-              <View style={[
-                styles.requestStatus,
-                { 
-                  backgroundColor: request.status === 'pending' ? '#FFB84D20' : 
-                                  request.status === 'accepted' ? '#4ECDC420' : '#FF6B6B20'
-                }
-              ]}>
-                <Text style={[
-                  styles.requestStatusText,
-                  { 
-                    color: request.status === 'pending' ? '#FFB84D' : 
-                           request.status === 'accepted' ? '#4ECDC4' : '#FF6B6B'
-                  }
-                ]}>
+          <View key={request.$id} style={styles.clayCard}>
+            <View style={styles.broadcastHeader}>
+              <View style={[styles.tag, { backgroundColor: ClayTheme.colors.clay.medium }]}>
+                <Text style={[styles.tagText, { color: ClayTheme.colors.text.secondary }]}>
                   {request.status}
                 </Text>
               </View>
-              <Text style={[styles.requestTime, { color: colors.tabIconDefault }]}>
-                {formatTimeAgo(request.createdAt)}
-              </Text>
+              <Text style={styles.timeText}>{formatTimeAgo(request.createdAt)}</Text>
             </View>
             
-            <Text style={[styles.requestTitle, { color: colors.text }]}>{request.title}</Text>
-            <Text style={[styles.requestDescription, { color: colors.tabIconDefault }]}>
-              {request.description}
-            </Text>
+            <Text style={styles.cardTitle}>{request.title}</Text>
+            <Text style={styles.cardDescription}>{request.description}</Text>
             
-            <View style={styles.requestSkills}>
+            <View style={styles.tagsContainer}>
               {request.skillsNeeded.map((skill: string, index: number) => (
-                <View key={index} style={[styles.tag, { backgroundColor: colors.tint + '20' }]}>
-                  <Text style={[styles.tagText, { color: colors.tint }]}>{skill}</Text>
+                <View key={index} style={styles.tag}>
+                  <Text style={styles.tagText}>{skill}</Text>
                 </View>
               ))}
             </View>
             
-            <View style={styles.requestFooter}>
-              <Text style={[styles.requestRequester, { color: colors.tabIconDefault }]}>
-                by User {request.requesterId.substring(0, 8)}
-              </Text>
+            <View style={styles.cardFooter}>
+              <Text style={styles.authorText}>by User {request.requesterId.substring(0, 8)}</Text>
               {request.helperId && (
-                <Text style={[styles.requestHelper, { color: colors.tint }]}>
-                  helping: User {request.helperId.substring(0, 8)}
-                </Text>
+                <Text style={styles.responseText}>helping: User {request.helperId.substring(0, 8)}</Text>
               )}
             </View>
             
             {request.status === 'pending' && request.requesterId !== user?.$id && (
               <TouchableOpacity 
-                style={[styles.acceptButton, { backgroundColor: colors.tint }]}
+                style={styles.clayButton}
                 onPress={() => handleAcceptRequest(request.$id)}
               >
-                <Text style={styles.acceptButtonText}>Accept Request</Text>
+                <Text style={styles.clayButtonText}>Accept Request</Text>
               </TouchableOpacity>
             )}
           </View>
         ))}
       </View>
-    </>
+    </View>
   );
 
   const renderLeaderboard = () => (
-    <>
+    <View style={styles.content}>
       <View style={styles.section}>
-        <Text style={[styles.sectionTitle, { color: colors.text }]}>Help Leaderboard</Text>
+        <Text style={styles.sectionTitle}>Help Leaderboard</Text>
         {members
           .sort((a, b) => b.helpScore - a.helpScore)
           .map((member, index) => (
-            <View key={member.$id} style={[styles.leaderboardCard, { backgroundColor: colors.background }]}>
-              <View style={styles.leaderboardRank}>
-                <Text style={[styles.rankNumber, { color: colors.tint }]}>#{index + 1}</Text>
+            <View key={member.$id} style={styles.clayCard}>
+              <View style={styles.leaderboardRow}>
+                <Text style={styles.rankText}>#{index + 1}</Text>
+                <View style={styles.memberInfo}>
+                  <Text style={styles.cardTitle}>{member.name}</Text>
+                  <Text style={styles.scoreText}>{member.helpScore} help points</Text>
+                </View>
+                <Icon name={Trophy} size={24} color={index < 3 ? ClayTheme.colors.secondary : ClayTheme.colors.text.light} />
               </View>
-              <View style={styles.leaderboardInfo}>
-                <Text style={[styles.leaderboardName, { color: colors.text }]}>{member.name}</Text>
-                <Text style={[styles.leaderboardScore, { color: colors.tint }]}>
-                  {member.helpScore} help points
-                </Text>
-              </View>
-              <Icon name={Trophy} size={24} color={index < 3 ? '#FFD700' : colors.tabIconDefault} />
             </View>
           ))}
       </View>
-    </>
-  );
-
-  const renderBorrows = () => (
-    <>
-      <View style={styles.section}>
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: colors.text }]}>Borrow & Share</Text>
-          <TouchableOpacity 
-            style={[styles.addButton, { backgroundColor: colors.tint }]}
-            onPress={() => setShowBorrowModal(true)}
-          >
-            <Text style={styles.addButtonText}>Request Item</Text>
-          </TouchableOpacity>
-        </View>
-        
-        {borrowRequests.map(borrowRequest => (
-          <View key={borrowRequest.$id} style={[styles.requestCard, { backgroundColor: colors.background }]}>
-            <View style={styles.requestHeader}>
-              <View style={[
-                styles.requestStatus,
-                { 
-                  backgroundColor: borrowRequest.status === 'pending' ? '#FFB84D20' : 
-                                   borrowRequest.status === 'approved' ? '#4ECDC420' :
-                                   borrowRequest.status === 'borrowed' ? '#3498DB20' :
-                                   borrowRequest.status === 'returned' ? '#2ECC7120' : '#FF6B6B20'
-                }
-              ]}>
-                <Text style={[
-                  styles.requestStatusText,
-                  { 
-                    color: borrowRequest.status === 'pending' ? '#FFB84D' : 
-                           borrowRequest.status === 'approved' ? '#4ECDC4' :
-                           borrowRequest.status === 'borrowed' ? '#3498DB' :
-                           borrowRequest.status === 'returned' ? '#2ECC71' : '#FF6B6B'
-                  }
-                ]}>
-                  {borrowRequest.status}
-                </Text>
-              </View>
-              <Text style={[styles.requestTime, { color: colors.tabIconDefault }]}>
-                {formatTimeAgo(borrowRequest.createdAt)}
-              </Text>
-            </View>
-            
-            <Text style={[styles.requestTitle, { color: colors.text }]}>{borrowRequest.title}</Text>
-            <Text style={[styles.requestDescription, { color: colors.tabIconDefault }]}>
-              {borrowRequest.description}
-            </Text>
-            
-            <View style={styles.borrowMeta}>
-              <View style={[styles.tag, { backgroundColor: colors.tint + '20' }]}>
-                <Text style={[styles.tagText, { color: colors.tint }]}>{borrowRequest.category}</Text>
-              </View>
-              {borrowRequest.expectedReturnDate && (
-                <Text style={[styles.expectedReturn, { color: colors.tabIconDefault }]}>
-                  Return: {borrowRequest.expectedReturnDate}
-                </Text>
-              )}
-            </View>
-            
-            <View style={styles.requestFooter}>
-              <Text style={[styles.requestRequester, { color: colors.tabIconDefault }]}>
-                by User {borrowRequest.borrowerId.substring(0, 8)}
-              </Text>
-              {borrowRequest.lenderId && (
-                <Text style={[styles.requestHelper, { color: colors.tint }]}>
-                  lender: User {borrowRequest.lenderId.substring(0, 8)}
-                </Text>
-              )}
-            </View>
-            
-            {/* Action Buttons */}
-            {borrowRequest.status === 'pending' && borrowRequest.borrowerId !== user?.$id && (
-              <TouchableOpacity 
-                style={[styles.acceptButton, { backgroundColor: colors.tint }]}
-                onPress={() => handleApproveBorrowRequest(borrowRequest.$id)}
-              >
-                <Text style={styles.acceptButtonText}>Offer to Lend</Text>
-              </TouchableOpacity>
-            )}
-            
-            {borrowRequest.status === 'approved' && borrowRequest.lenderId === user?.$id && (
-              <TouchableOpacity 
-                style={[styles.acceptButton, { backgroundColor: '#3498DB' }]}
-                onPress={() => handleMarkAsBorrowed(borrowRequest.$id)}
-              >
-                <Text style={styles.acceptButtonText}>Mark as Borrowed</Text>
-              </TouchableOpacity>
-            )}
-            
-            {borrowRequest.status === 'borrowed' && (borrowRequest.borrowerId === user?.$id || borrowRequest.lenderId === user?.$id) && (
-              <TouchableOpacity 
-                style={[styles.acceptButton, { backgroundColor: '#2ECC71' }]}
-                onPress={() => handleMarkAsReturned(borrowRequest.$id)}
-              >
-                <Text style={styles.acceptButtonText}>Mark as Returned</Text>
-              </TouchableOpacity>
-            )}
-            
-            {/* Tracking Info */}
-            {borrowRequest.borrowedAt && (
-              <View style={styles.trackingInfo}>
-                <Text style={[styles.trackingText, { color: colors.tabIconDefault }]}>
-                  📦 Borrowed: {formatTimeAgo(borrowRequest.borrowedAt)}
-                </Text>
-              </View>
-            )}
-            
-            {borrowRequest.returnedAt && (
-              <View style={styles.trackingInfo}>
-                <Text style={[styles.trackingText, { color: colors.tint }]}>
-                  ✅ Returned: {formatTimeAgo(borrowRequest.returnedAt)}
-                </Text>
-              </View>
-            )}
-          </View>
-        ))}
-        
-        {borrowRequests.length === 0 && (
-          <View style={styles.emptyContainer}>
-            <Text style={[styles.emptyText, { color: colors.tabIconDefault }]}>
-              No borrow requests yet. Start sharing resources!
-            </Text>
-          </View>
-        )}
-      </View>
-    </>
+    </View>
   );
 
   const handleAcceptRequest = async (requestId: string) => {
@@ -623,55 +383,21 @@ export default function RoomScreen() {
     }
   };
 
-  const handleCopyRoomCode = async () => {
-    if (!id) return;
-    
-    try {
-      await Clipboard.setStringAsync(id as string);
-      setCopiedRoomCode(true);
-      
-      // Reset the copied state after 2 seconds
-      setTimeout(() => {
-        setCopiedRoomCode(false);
-      }, 2000);
-    } catch (error) {
-      console.error('Error copying room code:', error);
-      Alert.alert('Error', 'Failed to copy room code');
-    }
-  };
-
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: colors.background }]}>
+    <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={[styles.header, { backgroundColor: colors.background }]}>
+      <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Icon name={ArrowLeft} size={24} color={colors.text} />
+          <Icon name={ArrowLeft} size={24} color={ClayTheme.colors.text.primary} />
         </TouchableOpacity>
         <View style={styles.headerInfo}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{roomData?.name || 'Loading...'}</Text>
-          <View style={styles.roomCodeContainer}>
-            <Text style={[styles.roomCodeLabel, { color: colors.tabIconDefault }]}>Room Code: </Text>
-            <Text style={[styles.roomCodeText, { color: colors.tint }]}>{id || 'Loading...'}</Text>
-            <TouchableOpacity 
-              onPress={handleCopyRoomCode}
-              style={[styles.copyButton, { backgroundColor: copiedRoomCode ? colors.tint + '20' : 'transparent' }]}
-              disabled={!id}
-            >
-              <Icon 
-                name={copiedRoomCode ? Check : Copy} 
-                size={16} 
-                color={copiedRoomCode ? colors.tint : colors.tabIconDefault} 
-              />
-            </TouchableOpacity>
-          </View>
-          <Text style={[styles.headerSubtitle, { color: colors.tabIconDefault }]}>
-            {roomData?.memberCount || 0} members
-          </Text>
+          <Text style={styles.headerTitle}>{roomData?.name || 'Loading...'}</Text>
+          <Text style={styles.headerSubtitle}>{roomData?.memberCount || 0} members</Text>
         </View>
       </View>
 
       {/* Tab Navigation */}
-      <View style={[styles.tabBar, { backgroundColor: colors.background }]}>
+      <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'dashboard' && styles.activeTab]}
           onPress={() => setActiveTab('dashboard')}
@@ -679,11 +405,11 @@ export default function RoomScreen() {
           <Icon 
             name={Zap} 
             size={20} 
-            color={activeTab === 'dashboard' ? colors.tint : colors.tabIconDefault} 
+            color={activeTab === 'dashboard' ? ClayTheme.colors.primary : ClayTheme.colors.text.light} 
           />
           <Text style={[
             styles.tabText,
-            { color: activeTab === 'dashboard' ? colors.tint : colors.tabIconDefault }
+            { color: activeTab === 'dashboard' ? ClayTheme.colors.primary : ClayTheme.colors.text.light }
           ]}>
             Dashboard
           </Text>
@@ -696,11 +422,11 @@ export default function RoomScreen() {
           <Icon 
             name={MessageSquare} 
             size={20} 
-            color={activeTab === 'requests' ? colors.tint : colors.tabIconDefault} 
+            color={activeTab === 'requests' ? ClayTheme.colors.primary : ClayTheme.colors.text.light} 
           />
           <Text style={[
             styles.tabText,
-            { color: activeTab === 'requests' ? colors.tint : colors.tabIconDefault }
+            { color: activeTab === 'requests' ? ClayTheme.colors.primary : ClayTheme.colors.text.light }
           ]}>
             Requests
           </Text>
@@ -713,67 +439,28 @@ export default function RoomScreen() {
           <Icon 
             name={Trophy} 
             size={20} 
-            color={activeTab === 'leaderboard' ? colors.tint : colors.tabIconDefault} 
+            color={activeTab === 'leaderboard' ? ClayTheme.colors.primary : ClayTheme.colors.text.light} 
           />
           <Text style={[
             styles.tabText,
-            { color: activeTab === 'leaderboard' ? colors.tint : colors.tabIconDefault }
+            { color: activeTab === 'leaderboard' ? ClayTheme.colors.primary : ClayTheme.colors.text.light }
           ]}>
             Leaderboard
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'borrows' && styles.activeTab]}
-          onPress={() => setActiveTab('borrows')}
-        >
-          <Icon 
-            name={Package} 
-            size={20} 
-            color={activeTab === 'borrows' ? colors.tint : colors.tabIconDefault} 
-          />
-          <Text style={[
-            styles.tabText,
-            { color: activeTab === 'borrows' ? colors.tint : colors.tabIconDefault }
-          ]}>
-            Borrows
-          </Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
-          onPress={() => setActiveTab('chat')}
-        >
-          <Icon 
-            name={Users} 
-            size={20} 
-            color={activeTab === 'chat' ? colors.tint : colors.tabIconDefault} 
-          />
-          <Text style={[
-            styles.tabText,
-            { color: activeTab === 'chat' ? colors.tint : colors.tabIconDefault }
-          ]}>
-            Chat
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* Content */}
-      {activeTab === 'chat' ? (
-        <GroupChat roomId={id as string} />
-      ) : (
-        <ScrollView 
-          style={styles.content}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
-          }
-        >
-          {activeTab === 'dashboard' && renderDashboard()}
-          {activeTab === 'requests' && renderRequests()}
-          {activeTab === 'leaderboard' && renderLeaderboard()}
-          {activeTab === 'borrows' && renderBorrows()}
-        </ScrollView>
-      )}
+      <ScrollView 
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+        }
+      >
+        {activeTab === 'dashboard' && renderDashboard()}
+        {activeTab === 'requests' && renderRequests()}
+        {activeTab === 'leaderboard' && renderLeaderboard()}
+      </ScrollView>
 
       {/* Modals */}
       <BroadcastModal
@@ -787,12 +474,6 @@ export default function RoomScreen() {
         onClose={() => setShowRequestModal(false)}
         onSubmit={handleCreateRequest}
       />
-      
-      <BorrowModal
-        visible={showBorrowModal}
-        onClose={() => setShowBorrowModal(false)}
-        onSubmit={handleCreateBorrowRequest}
-      />
     </SafeAreaView>
   );
 }
@@ -800,17 +481,19 @@ export default function RoomScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: ClayTheme.colors.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: ClayTheme.spacing.lg,
+    paddingVertical: ClayTheme.spacing.md,
+    backgroundColor: ClayTheme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: ClayTheme.colors.clay.medium,
   },
   backButton: {
-    marginRight: 16,
+    marginRight: ClayTheme.spacing.md,
   },
   headerInfo: {
     flex: 1,
@@ -818,276 +501,190 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: 'bold',
+    color: ClayTheme.colors.text.primary,
   },
   headerSubtitle: {
     fontSize: 14,
     marginTop: 2,
-  },
-  roomCodeContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 2,
-    marginBottom: 2,
-  },
-  roomCodeLabel: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  roomCodeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    marginRight: 6,
-  },
-  copyButton: {
-    padding: 4,
-    borderRadius: 4,
-    marginLeft: 2,
+    color: ClayTheme.colors.text.secondary,
   },
   tabBar: {
     flexDirection: 'row',
+    backgroundColor: ClayTheme.colors.surface,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E5',
+    borderBottomColor: ClayTheme.colors.clay.medium,
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
-    gap: 6,
+    paddingVertical: ClayTheme.spacing.md,
+    gap: ClayTheme.spacing.sm,
   },
   activeTab: {
     borderBottomWidth: 2,
-    borderBottomColor: '#007AFF',
+    borderBottomColor: ClayTheme.colors.primary,
   },
   tabText: {
     fontSize: 14,
     fontWeight: '500',
   },
-  tabContent: {
+  scrollView: {
     flex: 1,
-    padding: 20,
+  },
+  content: {
+    padding: ClayTheme.spacing.lg,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: ClayTheme.spacing.xl,
   },
   sectionTitle: {
     fontSize: 18,
     fontWeight: '600',
-    marginBottom: 16,
+    marginBottom: ClayTheme.spacing.md,
+    color: ClayTheme.colors.text.primary,
   },
-  searchContainer: {
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: ClayTheme.spacing.md,
+  },
+  clayCard: {
+    backgroundColor: ClayTheme.colors.surface,
+    borderRadius: ClayTheme.borderRadius.large,
+    padding: ClayTheme.spacing.lg,
+    marginBottom: ClayTheme.spacing.md,
+    ...ClayTheme.shadows.claySubtle,
+  },
+  clayButton: {
+    backgroundColor: ClayTheme.colors.primary,
+    borderRadius: ClayTheme.borderRadius.medium,
+    paddingHorizontal: ClayTheme.spacing.md,
+    paddingVertical: ClayTheme.spacing.sm,
+    ...ClayTheme.shadows.claySubtle,
+  },
+  clayButtonText: {
+    color: ClayTheme.colors.surface,
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  claySearchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F5F5F5',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 16,
-    gap: 8,
+    backgroundColor: ClayTheme.colors.surface,
+    borderRadius: ClayTheme.borderRadius.medium,
+    paddingHorizontal: ClayTheme.spacing.md,
+    paddingVertical: ClayTheme.spacing.sm,
+    marginBottom: ClayTheme.spacing.md,
+    gap: ClayTheme.spacing.sm,
+    ...ClayTheme.shadows.claySubtle,
   },
-  searchInput: {
+  claySearchInput: {
     flex: 1,
     fontSize: 16,
-  },
-  broadcastCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    color: ClayTheme.colors.text.primary,
   },
   broadcastHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: ClayTheme.spacing.sm,
   },
-  broadcastType: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  broadcastTypeText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  broadcastTime: {
-    fontSize: 12,
-  },
-  broadcastTitle: {
+  cardTitle: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: ClayTheme.spacing.xs,
+    color: ClayTheme.colors.text.primary,
   },
-  broadcastDescription: {
+  cardDescription: {
     fontSize: 14,
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: ClayTheme.spacing.md,
+    color: ClayTheme.colors.text.secondary,
   },
-  broadcastFooter: {
+  cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  broadcastAuthor: {
+  timeText: {
     fontSize: 12,
+    color: ClayTheme.colors.text.light,
   },
-  broadcastResponses: {
+  authorText: {
+    fontSize: 12,
+    color: ClayTheme.colors.text.light,
+  },
+  responseText: {
     fontSize: 12,
     fontWeight: '500',
-  },
-  memberCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    color: ClayTheme.colors.primary,
   },
   memberHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: 12,
+    marginBottom: ClayTheme.spacing.md,
   },
   memberInfo: {
     flex: 1,
   },
-  memberName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
   memberStatus: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: ClayTheme.spacing.sm,
   },
-  statusIndicator: {
+  statusDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
   },
   statusText: {
     fontSize: 12,
+    color: ClayTheme.colors.text.light,
   },
-  helpScore: {
+  scoreText: {
     fontSize: 14,
     fontWeight: '600',
+    color: ClayTheme.colors.primary,
   },
-  memberTags: {
+  tagsContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 8,
-    gap: 8,
+    marginBottom: ClayTheme.spacing.sm,
+    gap: ClayTheme.spacing.sm,
   },
   tagLabel: {
     fontSize: 12,
     fontWeight: '500',
     minWidth: 40,
+    color: ClayTheme.colors.text.light,
   },
   tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 6,
+    backgroundColor: ClayTheme.colors.clay.light,
+    paddingHorizontal: ClayTheme.spacing.sm,
+    paddingVertical: ClayTheme.spacing.xs,
+    borderRadius: ClayTheme.borderRadius.small,
+    marginRight: ClayTheme.spacing.xs,
   },
   tagText: {
     fontSize: 12,
     fontWeight: '500',
+    color: ClayTheme.colors.text.secondary,
   },
-  requestCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
-  },
-  requestHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 8,
-  },
-  requestStatus: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-  },
-  requestStatusText: {
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  requestTime: {
-    fontSize: 12,
-  },
-  requestTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 4,
-  },
-  requestDescription: {
-    fontSize: 14,
-    lineHeight: 20,
-    marginBottom: 12,
-  },
-  requestSkills: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginBottom: 12,
-  },
-  requestFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  requestRequester: {
-    fontSize: 12,
-  },
-  requestHelper: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  leaderboardCard: {
+  leaderboardRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    gap: ClayTheme.spacing.md,
   },
-  leaderboardRank: {
-    marginRight: 16,
-  },
-  rankNumber: {
+  rankText: {
     fontSize: 18,
     fontWeight: 'bold',
-  },
-  leaderboardInfo: {
-    flex: 1,
-  },
-  leaderboardName: {
-    fontSize: 16,
-    fontWeight: '600',
-    marginBottom: 2,
-  },
-  leaderboardScore: {
-    fontSize: 14,
+    color: ClayTheme.colors.primary,
+    minWidth: 40,
   },
   loadingContainer: {
     flex: 1,
@@ -1097,62 +694,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 16,
     marginTop: 10,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  addButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  addButtonText: {
-    color: 'white',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  acceptButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    borderRadius: 6,
-    marginTop: 8,
-  },
-  acceptButtonText: {
-    color: 'white',
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-  content: {
-    flex: 1,
-  },
-  borrowMeta: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  expectedReturn: {
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  trackingInfo: {
-    marginTop: 8,
-    paddingVertical: 4,
-  },
-  trackingText: {
-    fontSize: 12,
-    fontWeight: '500',
-  },
-  emptyContainer: {
-    paddingVertical: 40,
-    alignItems: 'center',
-  },
-  emptyText: {
-    fontSize: 16,
-    textAlign: 'center',
+    color: ClayTheme.colors.text.primary,
   },
 });

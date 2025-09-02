@@ -1,82 +1,70 @@
 import { ClayTheme, clayMorphStyles } from '@/theme/claymorph';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import LottieView from 'lottie-react-native';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const SKILL_CATEGORIES = {
-  'Programming & Development': [
-    'JavaScript', 'TypeScript', 'React', 'React Native', 'Node.js', 'Python',
-    'Java', 'Swift', 'Kotlin', 'Flutter', 'Vue.js', 'Angular', 'PHP',
-    'Ruby', 'Go', 'Rust', 'C++', 'C#', 'HTML/CSS', 'SQL', 'NoSQL',
-    'GraphQL', 'REST APIs', 'Microservices', 'Full-Stack Development'
+const TOOL_CATEGORIES = {
+  'Development Tools': [
+    'VS Code', 'IntelliJ IDEA', 'Eclipse', 'Sublime Text', 'Atom',
+    'Vim', 'Emacs', 'WebStorm', 'PyCharm', 'Android Studio',
+    'Xcode', 'Git', 'GitHub', 'GitLab', 'Bitbucket', 'SVN',
+    'Docker', 'Kubernetes', 'Jenkins', 'Travis CI', 'CircleCI'
   ],
-  'Design & Creative': [
-    'UI/UX Design', 'Graphic Design', 'Web Design', 'Mobile Design',
-    'Brand Design', 'Logo Design', 'Typography', 'Color Theory',
-    'Wireframing', 'Prototyping', 'Design Systems', 'Illustration',
-    'Photography', 'Video Editing', 'Motion Graphics', '3D Modeling',
-    'Animation', 'Digital Art', 'Print Design', 'Package Design'
+  'Design & Creative Tools': [
+    'Figma', 'Adobe Photoshop', 'Adobe Illustrator', 'Adobe XD',
+    'Sketch', 'Canva', 'Adobe InDesign', 'Adobe After Effects',
+    'Adobe Premiere Pro', 'Final Cut Pro', 'Blender', 'AutoCAD',
+    'SketchUp', 'Procreate', 'Affinity Designer', 'Framer'
   ],
-  'Business & Management': [
-    'Project Management', 'Product Management', 'Team Leadership',
-    'Strategic Planning', 'Business Analysis', 'Operations Management',
-    'Change Management', 'Risk Management', 'Quality Assurance',
-    'Process Improvement', 'Agile/Scrum', 'Budget Management',
-    'Stakeholder Management', 'Performance Management', 'Consulting'
+  'Communication & Collaboration': [
+    'Slack', 'Discord', 'Microsoft Teams', 'Zoom', 'Google Meet',
+    'Skype', 'Notion', 'Confluence', 'SharePoint', 'Miro',
+    'Mural', 'Whimsical', 'Loom', 'Calendly', 'Doodle'
   ],
-  'Marketing & Communication': [
-    'Digital Marketing', 'Content Marketing', 'Social Media Marketing',
-    'Email Marketing', 'SEO/SEM', 'Brand Marketing', 'Copywriting',
-    'Content Creation', 'Public Relations', 'Event Planning',
-    'Market Research', 'Customer Experience', 'Influencer Marketing',
-    'Growth Hacking', 'Analytics', 'Communication', 'Presentation Skills'
+  'Project Management': [
+    'Jira', 'Trello', 'Asana', 'Monday.com', 'ClickUp', 'Linear',
+    'Basecamp', 'Wrike', 'Smartsheet', 'Airtable', 'Todoist',
+    'Microsoft Project', 'Gantt charts', 'Scrum boards', 'Kanban'
   ],
-  'Data & Analytics': [
-    'Data Analysis', 'Data Science', 'Machine Learning', 'AI/ML',
-    'Deep Learning', 'Data Visualization', 'Statistics', 'Big Data',
-    'Business Intelligence', 'Predictive Analytics', 'Data Mining',
-    'ETL Processes', 'Database Design', 'Data Warehousing', 'R Programming'
+  'Cloud & Infrastructure': [
+    'AWS', 'Google Cloud', 'Microsoft Azure', 'Vercel', 'Netlify',
+    'Heroku', 'DigitalOcean', 'Linode', 'Cloudflare', 'Firebase',
+    'Supabase', 'MongoDB Atlas', 'Railway', 'Render'
   ],
-  'Technology & Infrastructure': [
-    'DevOps', 'Cloud Computing', 'AWS', 'Azure', 'Google Cloud',
-    'Docker', 'Kubernetes', 'CI/CD', 'Infrastructure as Code',
-    'Monitoring', 'Security', 'Cybersecurity', 'Network Administration',
-    'System Administration', 'Automation', 'Blockchain'
+  'API & Testing Tools': [
+    'Postman', 'Insomnia', 'Thunder Client', 'Swagger', 'Curl',
+    'Jest', 'Cypress', 'Selenium', 'Playwright', 'TestCafe',
+    'Mocha', 'Chai', 'Enzyme', 'React Testing Library'
   ],
-  'Finance & Accounting': [
-    'Financial Analysis', 'Accounting', 'Budgeting', 'Forecasting',
-    'Investment Analysis', 'Risk Assessment', 'Compliance',
-    'Tax Planning', 'Audit', 'Financial Modeling', 'Cost Management',
-    'Treasury Management', 'Financial Planning', 'Bookkeeping'
+  'Database & Analytics': [
+    'MongoDB', 'PostgreSQL', 'MySQL', 'SQLite', 'Redis',
+    'Elasticsearch', 'Neo4j', 'Cassandra', 'DynamoDB',
+    'Google Analytics', 'Mixpanel', 'Amplitude', 'Hotjar'
   ],
-  'Sales & Customer Success': [
-    'Sales Strategy', 'Lead Generation', 'Customer Relationship Management',
-    'Customer Success', 'Account Management', 'Business Development',
-    'Sales Operations', 'Negotiation', 'Customer Support',
-    'Technical Sales', 'Inside Sales', 'Field Sales', 'Channel Sales'
-  ],
-  'Other Skills': [
-    'Writing', 'Research', 'Translation', 'Teaching', 'Training',
-    'Mentoring', 'Problem Solving', 'Critical Thinking', 'Innovation',
-    'Creativity', 'Time Management', 'Organization', 'Adaptability',
-    'Collaboration', 'Remote Work', 'Cross-functional Coordination'
+  'Business & Productivity': [
+    'Microsoft Office', 'Google Workspace', 'Excel', 'PowerPoint',
+    'Word', 'Sheets', 'Docs', 'Slides', 'Evernote', 'OneNote',
+    'HubSpot', 'Salesforce', 'Zendesk', 'Intercom', 'Mailchimp'
   ]
 };
 
-export default function SkillsOnboardingScreen() {
-  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
-  const [customSkill, setCustomSkill] = useState('');
-  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Programming & Development']);
+export default function ToolsOnboardingScreen() {
+  const params = useLocalSearchParams();
+  const skills = params.skills ? JSON.parse(params.skills as string) : [];
+  
+  const [selectedTools, setSelectedTools] = useState<string[]>([]);
+  const [customTool, setCustomTool] = useState('');
+  const [expandedCategories, setExpandedCategories] = useState<string[]>(['Development Tools']);
   const animationRef = useRef<LottieView>(null);
 
-  const toggleSkill = (skill: string) => {
-    setSelectedSkills(prev => 
-      prev.includes(skill) 
-        ? prev.filter(s => s !== skill)
-        : [...prev, skill]
+  const toggleTool = (tool: string) => {
+    setSelectedTools(prev => 
+      prev.includes(tool) 
+        ? prev.filter(t => t !== tool)
+        : [...prev, tool]
     );
   };
 
@@ -88,28 +76,35 @@ export default function SkillsOnboardingScreen() {
     );
   };
 
-  const addCustomSkill = () => {
-    if (customSkill.trim() && !selectedSkills.includes(customSkill.trim())) {
-      setSelectedSkills(prev => [...prev, customSkill.trim()]);
-      setCustomSkill('');
+  const addCustomTool = () => {
+    if (customTool.trim() && !selectedTools.includes(customTool.trim())) {
+      setSelectedTools(prev => [...prev, customTool.trim()]);
+      setCustomTool('');
     }
   };
 
-  const removeSkill = (skill: string) => {
-    setSelectedSkills(prev => prev.filter(s => s !== skill));
+  const removeTool = (tool: string) => {
+    setSelectedTools(prev => prev.filter(t => t !== tool));
   };
 
   const handleNext = () => {
-    if (selectedSkills.length === 0) {
-      Alert.alert('Select Skills', 'Please select at least one skill to continue');
+    if (selectedTools.length === 0) {
+      Alert.alert('Select Tools', 'Please select at least one tool to continue');
       return;
     }
     
-    // Pass skills to next screen and navigate
+    // Pass both skills and tools to next screen
     router.push({
-      pathname: '/(onboarding)/tools' as any,
-      params: { skills: JSON.stringify(selectedSkills) }
+      pathname: '/(onboarding)/availability' as any,
+      params: { 
+        skills: JSON.stringify(skills),
+        tools: JSON.stringify(selectedTools)
+      }
     });
+  };
+
+  const handleBack = () => {
+    router.back();
   };
 
   return (
@@ -130,13 +125,13 @@ export default function SkillsOnboardingScreen() {
                   style={styles.animation}
                 />
               </View>
-              <Text style={styles.title}>What are your skills?</Text>
+              <Text style={styles.title}>What tools do you use?</Text>
               <Text style={styles.subtitle}>
-                Select the skills you have or add your own. This helps others find you for collaboration.
+                Select the tools and resources you&apos;re familiar with. This helps match you with relevant projects.
               </Text>
             </View>
 
-            {Object.entries(SKILL_CATEGORIES).map(([category, skills]) => (
+            {Object.entries(TOOL_CATEGORIES).map(([category, tools]) => (
               <View key={category} style={styles.categorySection}>
                 <TouchableOpacity
                   style={[styles.categoryHeader, clayMorphStyles.button]}
@@ -144,27 +139,27 @@ export default function SkillsOnboardingScreen() {
                 >
                   <Text style={styles.categoryTitle}>{category}</Text>
                   <Text style={styles.categoryCount}>
-                    ({skills.filter(skill => selectedSkills.includes(skill)).length}/{skills.length})
+                    ({tools.filter(tool => selectedTools.includes(tool)).length}/{tools.length})
                   </Text>
                 </TouchableOpacity>
 
                 {expandedCategories.includes(category) && (
-                  <View style={styles.skillsGrid}>
-                    {skills.map((skill) => (
+                  <View style={styles.toolsGrid}>
+                    {tools.map((tool) => (
                       <TouchableOpacity
-                        key={skill}
+                        key={tool}
                         style={[
-                          styles.skillChip,
+                          styles.toolChip,
                           clayMorphStyles.chip,
-                          selectedSkills.includes(skill) && [styles.skillChipSelected, clayMorphStyles.chipSelected]
+                          selectedTools.includes(tool) && [styles.toolChipSelected, clayMorphStyles.chipSelected]
                         ]}
-                        onPress={() => toggleSkill(skill)}
+                        onPress={() => toggleTool(tool)}
                       >
                         <Text style={[
-                          styles.skillChipText,
-                          selectedSkills.includes(skill) && styles.skillChipTextSelected
+                          styles.toolChipText,
+                          selectedTools.includes(tool) && styles.toolChipTextSelected
                         ]}>
-                          {skill}
+                          {tool}
                         </Text>
                       </TouchableOpacity>
                     ))}
@@ -174,22 +169,22 @@ export default function SkillsOnboardingScreen() {
             ))}
 
             <View style={[styles.section, clayMorphStyles.card]}>
-              <Text style={styles.sectionTitle}>Add Custom Skill</Text>
-              <View style={styles.customSkillContainer}>
+              <Text style={styles.sectionTitle}>Add Custom Tool</Text>
+              <View style={styles.customToolContainer}>
                 <TextInput
                   style={[styles.input, clayMorphStyles.input]}
-                  value={customSkill}
-                  onChangeText={setCustomSkill}
-                  placeholder="Enter a skill..."
+                  value={customTool}
+                  onChangeText={setCustomTool}
+                  placeholder="Enter a tool..."
                   placeholderTextColor={ClayTheme.colors.text.light}
-                  onSubmitEditing={addCustomSkill}
+                  onSubmitEditing={addCustomTool}
                 />
                 <TouchableOpacity 
                   style={[styles.addButton, clayMorphStyles.button]}
-                  onPress={addCustomSkill}
+                  onPress={addCustomTool}
                 >
                   <LinearGradient
-                    colors={ClayTheme.colors.gradient.primary}
+                    colors={ClayTheme.colors.gradient.accent}
                     style={styles.addButtonGradient}
                   >
                     <Text style={styles.addButtonText}>Add</Text>
@@ -198,16 +193,16 @@ export default function SkillsOnboardingScreen() {
               </View>
             </View>
 
-            {selectedSkills.length > 0 && (
+            {selectedTools.length > 0 && (
               <View style={[styles.section, clayMorphStyles.card]}>
-                <Text style={styles.sectionTitle}>Your Selected Skills ({selectedSkills.length})</Text>
-                <View style={styles.selectedSkillsContainer}>
-                  {selectedSkills.map((skill) => (
-                    <View key={skill} style={[styles.selectedSkillChip, clayMorphStyles.chip]}>
-                      <Text style={styles.selectedSkillText}>{skill}</Text>
+                <Text style={styles.sectionTitle}>Your Selected Tools ({selectedTools.length})</Text>
+                <View style={styles.selectedToolsContainer}>
+                  {selectedTools.map((tool) => (
+                    <View key={tool} style={[styles.selectedToolChip, clayMorphStyles.chip]}>
+                      <Text style={styles.selectedToolText}>{tool}</Text>
                       <TouchableOpacity
                         style={styles.removeButton}
-                        onPress={() => removeSkill(skill)}
+                        onPress={() => removeTool(tool)}
                       >
                         <Text style={styles.removeButtonText}>×</Text>
                       </TouchableOpacity>
@@ -220,24 +215,33 @@ export default function SkillsOnboardingScreen() {
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity
-            style={[
-              styles.nextButton,
-              clayMorphStyles.button,
-              selectedSkills.length === 0 && styles.nextButtonDisabled
-            ]}
-            onPress={handleNext}
-            disabled={selectedSkills.length === 0}
-          >
-            <LinearGradient
-              colors={selectedSkills.length > 0 ? ClayTheme.colors.gradient.primary : ['#9ca3af', '#9ca3af']}
-              style={styles.nextButtonGradient}
+          <View style={styles.footerButtons}>
+            <TouchableOpacity
+              style={[styles.backButton, clayMorphStyles.button]}
+              onPress={handleBack}
             >
-              <Text style={styles.nextButtonText}>
-                Next: Tools & Resources
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
+              <Text style={styles.backButtonText}>Back</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[
+                styles.nextButton,
+                clayMorphStyles.button,
+                selectedTools.length === 0 && styles.nextButtonDisabled
+              ]}
+              onPress={handleNext}
+              disabled={selectedTools.length === 0}
+            >
+              <LinearGradient
+                colors={selectedTools.length > 0 ? ClayTheme.colors.gradient.primary : ['#9ca3af', '#9ca3af'] as const}
+                style={styles.nextButtonGradient}
+              >
+                <Text style={styles.nextButtonText}>
+                  Next: Availability
+                </Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </View>
       </SafeAreaView>
     </LinearGradient>
@@ -314,30 +318,30 @@ const styles = StyleSheet.create({
     color: ClayTheme.colors.text.primary,
     marginBottom: 16,
   },
-  skillsGrid: {
+  toolsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
     marginTop: 8,
   },
-  skillChip: {
+  toolChip: {
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: ClayTheme.borderRadius.large,
     margin: 2,
   },
-  skillChipSelected: {
+  toolChipSelected: {
     transform: [{ scale: 0.98 }],
   },
-  skillChipText: {
+  toolChipText: {
     fontSize: 14,
     color: ClayTheme.colors.text.primary,
     fontWeight: '500',
   },
-  skillChipTextSelected: {
+  toolChipTextSelected: {
     color: '#fff',
   },
-  customSkillContainer: {
+  customToolContainer: {
     flexDirection: 'row',
     gap: 12,
     alignItems: 'center',
@@ -364,21 +368,21 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     fontSize: 14,
   },
-  selectedSkillsContainer: {
+  selectedToolsContainer: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
   },
-  selectedSkillChip: {
+  selectedToolChip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
-  selectedSkillText: {
+  selectedToolText: {
     fontSize: 14,
-    color: ClayTheme.colors.primary,
+    color: ClayTheme.colors.accent,
     fontWeight: '500',
   },
   removeButton: {
@@ -403,7 +407,24 @@ const styles = StyleSheet.create({
     padding: 24,
     backgroundColor: 'transparent',
   },
+  footerButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  backButton: {
+    flex: 1,
+    paddingVertical: 16,
+    borderRadius: ClayTheme.borderRadius.medium,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonText: {
+    color: ClayTheme.colors.text.primary,
+    fontSize: 16,
+    fontWeight: '600',
+  },
   nextButton: {
+    flex: 2,
     borderRadius: ClayTheme.borderRadius.medium,
     overflow: 'hidden',
   },
