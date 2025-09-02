@@ -41,7 +41,7 @@ export default function SplashScreen() {
         if (!isAuthenticated) {
           // Not authenticated, go to login
           console.log('Redirecting to login');
-          router.replace('/(auth)/signup' as any);
+          router.replace('/(auth)/register' as any);
         } else if (user && !user.hasCompletedOnboarding) {
           // Authenticated but hasn't completed onboarding
           console.log('Redirecting to onboarding');
