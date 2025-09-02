@@ -1,5 +1,4 @@
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { ClayTheme } from '@/theme/claymorph';
 import React, { useState } from 'react';
 import {
   Modal,
@@ -20,9 +19,6 @@ interface BroadcastModalProps {
 }
 
 export function BroadcastModal({ visible, onClose, onSubmit }: BroadcastModalProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [type, setType] = useState<'help' | 'collaboration' | 'announcement'>('help');
@@ -43,19 +39,16 @@ export function BroadcastModal({ visible, onClose, onSubmit }: BroadcastModalPro
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { borderBottomColor: colors.tabIconDefault + '20' }]}>
+      <View style={styles.container}>
+        <View style={styles.header}>
           <TouchableOpacity onPress={onClose}>
-            <Text style={[styles.cancelButton, { color: colors.tabIconDefault }]}>Cancel</Text>
+            <Text style={styles.cancelButton}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.text }]}>Create Broadcast</Text>
+          <Text style={styles.title}>Create Broadcast</Text>
           <TouchableOpacity onPress={handleSubmit} disabled={!title.trim() || !description.trim()}>
             <Text style={[
               styles.submitButton,
-              { 
-                color: title.trim() && description.trim() ? colors.tint : colors.tabIconDefault,
-                opacity: title.trim() && description.trim() ? 1 : 0.5
-              }
+              { opacity: title.trim() && description.trim() ? 1 : 0.5 }
             ]}>
               Post
             </Text>
@@ -64,26 +57,21 @@ export function BroadcastModal({ visible, onClose, onSubmit }: BroadcastModalPro
 
         <ScrollView style={styles.content}>
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>Type</Text>
+            <Text style={styles.label}>Type</Text>
             <View style={styles.typeSelector}>
               {(['help', 'collaboration', 'announcement'] as const).map((typeOption) => (
                 <TouchableOpacity
                   key={typeOption}
                   style={[
                     styles.typeButton,
-                    {
-                      backgroundColor: type === typeOption ? colors.tint : colors.background,
-                      borderColor: colors.tint,
-                    },
+                    type === typeOption && styles.typeButtonSelected,
                   ]}
                   onPress={() => setType(typeOption)}
                 >
-                  <Text
-                    style={[
-                      styles.typeButtonText,
-                      { color: type === typeOption ? 'white' : colors.tint },
-                    ]}
-                  >
+                  <Text style={[
+                    styles.typeButtonText,
+                    type === typeOption && styles.typeButtonTextSelected,
+                  ]}>
                     {typeOption}
                   </Text>
                 </TouchableOpacity>
@@ -92,15 +80,11 @@ export function BroadcastModal({ visible, onClose, onSubmit }: BroadcastModalPro
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>Title</Text>
+            <Text style={styles.label}>Title</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.background, 
-                borderColor: colors.tabIconDefault + '30',
-                color: colors.text 
-              }]}
+              style={styles.input}
               placeholder="Enter a clear, descriptive title"
-              placeholderTextColor={colors.tabIconDefault}
+              placeholderTextColor={ClayTheme.colors.text.light}
               value={title}
               onChangeText={setTitle}
               multiline
@@ -108,15 +92,11 @@ export function BroadcastModal({ visible, onClose, onSubmit }: BroadcastModalPro
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>Description</Text>
+            <Text style={styles.label}>Description</Text>
             <TextInput
-              style={[styles.textArea, { 
-                backgroundColor: colors.background, 
-                borderColor: colors.tabIconDefault + '30',
-                color: colors.text 
-              }]}
+              style={styles.textArea}
               placeholder="Provide more details about what you need or what you're offering"
-              placeholderTextColor={colors.tabIconDefault}
+              placeholderTextColor={ClayTheme.colors.text.light}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -136,9 +116,6 @@ interface RequestModalProps {
 }
 
 export function RequestModal({ visible, onClose, onSubmit }: RequestModalProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [skillsInput, setSkillsInput] = useState('');
@@ -164,19 +141,16 @@ export function RequestModal({ visible, onClose, onSubmit }: RequestModalProps) 
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { borderBottomColor: colors.tabIconDefault + '20' }]}>
+      <View style={styles.container}>
+        <View style={styles.header}>
           <TouchableOpacity onPress={onClose}>
-            <Text style={[styles.cancelButton, { color: colors.tabIconDefault }]}>Cancel</Text>
+            <Text style={styles.cancelButton}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.text }]}>Request Help</Text>
+          <Text style={styles.title}>Request Help</Text>
           <TouchableOpacity onPress={handleSubmit} disabled={!title.trim() || !description.trim()}>
             <Text style={[
               styles.submitButton,
-              { 
-                color: title.trim() && description.trim() ? colors.tint : colors.tabIconDefault,
-                opacity: title.trim() && description.trim() ? 1 : 0.5
-              }
+              { opacity: title.trim() && description.trim() ? 1 : 0.5 }
             ]}>
               Post
             </Text>
@@ -185,15 +159,11 @@ export function RequestModal({ visible, onClose, onSubmit }: RequestModalProps) 
 
         <ScrollView style={styles.content}>
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>Title</Text>
+            <Text style={styles.label}>Title</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.background, 
-                borderColor: colors.tabIconDefault + '30',
-                color: colors.text 
-              }]}
+              style={styles.input}
               placeholder="What do you need help with?"
-              placeholderTextColor={colors.tabIconDefault}
+              placeholderTextColor={ClayTheme.colors.text.light}
               value={title}
               onChangeText={setTitle}
               multiline
@@ -201,15 +171,11 @@ export function RequestModal({ visible, onClose, onSubmit }: RequestModalProps) 
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>Description</Text>
+            <Text style={styles.label}>Description</Text>
             <TextInput
-              style={[styles.textArea, { 
-                backgroundColor: colors.background, 
-                borderColor: colors.tabIconDefault + '30',
-                color: colors.text 
-              }]}
+              style={styles.textArea}
               placeholder="Describe your problem in detail. What have you tried? What specific help do you need?"
-              placeholderTextColor={colors.tabIconDefault}
+              placeholderTextColor={ClayTheme.colors.text.light}
               value={description}
               onChangeText={setDescription}
               multiline
@@ -218,15 +184,11 @@ export function RequestModal({ visible, onClose, onSubmit }: RequestModalProps) 
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>Skills Needed (optional)</Text>
+            <Text style={styles.label}>Skills Needed (optional)</Text>
             <TextInput
-              style={[styles.input, { 
-                backgroundColor: colors.background, 
-                borderColor: colors.tabIconDefault + '30',
-                color: colors.text 
-              }]}
+              style={styles.input}
               placeholder="React, TypeScript, Node.js (comma separated)"
-              placeholderTextColor={colors.tabIconDefault}
+              placeholderTextColor={ClayTheme.colors.text.light}
               value={skillsInput}
               onChangeText={setSkillsInput}
             />
@@ -240,66 +202,87 @@ export function RequestModal({ visible, onClose, onSubmit }: RequestModalProps) 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: ClayTheme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 16,
+    paddingHorizontal: ClayTheme.spacing.lg,
+    paddingVertical: ClayTheme.spacing.lg,
     borderBottomWidth: 1,
+    borderBottomColor: ClayTheme.colors.clay.medium,
+    backgroundColor: ClayTheme.colors.surface,
   },
   title: {
     fontSize: 18,
     fontWeight: '600',
+    color: ClayTheme.colors.text.primary,
   },
   cancelButton: {
     fontSize: 16,
+    color: ClayTheme.colors.text.light,
   },
   submitButton: {
     fontSize: 16,
     fontWeight: '600',
+    color: ClayTheme.colors.primary,
   },
   content: {
     flex: 1,
-    padding: 16,
+    padding: ClayTheme.spacing.lg,
   },
   section: {
-    marginBottom: 24,
+    marginBottom: ClayTheme.spacing.xl,
   },
   label: {
     fontSize: 16,
     fontWeight: '600',
-    marginBottom: 8,
+    marginBottom: ClayTheme.spacing.sm,
+    color: ClayTheme.colors.text.primary,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: ClayTheme.colors.surface,
+    borderRadius: ClayTheme.borderRadius.medium,
+    padding: ClayTheme.spacing.md,
     fontSize: 16,
+    color: ClayTheme.colors.text.primary,
+    ...ClayTheme.shadows.claySubtle,
     minHeight: 44,
   },
   textArea: {
-    borderWidth: 1,
-    borderRadius: 8,
-    padding: 12,
+    backgroundColor: ClayTheme.colors.surface,
+    borderRadius: ClayTheme.borderRadius.medium,
+    padding: ClayTheme.spacing.md,
     fontSize: 16,
+    color: ClayTheme.colors.text.primary,
+    ...ClayTheme.shadows.claySubtle,
     minHeight: 100,
     textAlignVertical: 'top',
   },
   typeSelector: {
     flexDirection: 'row',
-    gap: 8,
+    gap: ClayTheme.spacing.sm,
   },
   typeButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
+    flex: 1,
+    paddingVertical: ClayTheme.spacing.md,
+    paddingHorizontal: ClayTheme.spacing.sm,
+    borderRadius: ClayTheme.borderRadius.medium,
+    backgroundColor: ClayTheme.colors.surface,
+    ...ClayTheme.shadows.claySubtle,
+    alignItems: 'center',
+  },
+  typeButtonSelected: {
+    backgroundColor: ClayTheme.colors.primary,
   },
   typeButtonText: {
     fontSize: 14,
     fontWeight: '500',
+    color: ClayTheme.colors.text.secondary,
     textTransform: 'capitalize',
+  },
+  typeButtonTextSelected: {
+    color: ClayTheme.colors.surface,
   },
 });

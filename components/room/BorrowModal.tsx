@@ -1,5 +1,4 @@
-import { Colors } from '@/constants/Colors';
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { ClayTheme } from '@/theme/claymorph';
 import React, { useState } from 'react';
 import {
     Alert,
@@ -31,9 +30,6 @@ const CATEGORIES = [
 ];
 
 export function BorrowModal({ visible, onClose, onSubmit }: BorrowModalProps) {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
-  
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('other');
@@ -72,28 +68,24 @@ export function BorrowModal({ visible, onClose, onSubmit }: BorrowModalProps) {
       presentationStyle="pageSheet"
       onRequestClose={onClose}
     >
-      <View style={[styles.container, { backgroundColor: colors.background }]}>
-        <View style={[styles.header, { borderBottomColor: colors.tabIconDefault + '30' }]}>
+      <View style={styles.container}>
+        <View style={styles.header}>
           <TouchableOpacity onPress={onClose}>
-            <Text style={[styles.cancelButton, { color: colors.text }]}>Cancel</Text>
+            <Text style={styles.cancelButton}>Cancel</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>Request to Borrow</Text>
+          <Text style={styles.headerTitle}>Request to Borrow</Text>
           <TouchableOpacity onPress={handleSubmit}>
-            <Text style={[styles.submitButton, { color: colors.tint }]}>Post</Text>
+            <Text style={styles.submitButton}>Post</Text>
           </TouchableOpacity>
         </View>
 
         <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>What do you need to borrow? *</Text>
+            <Text style={styles.label}>What do you need to borrow? *</Text>
             <TextInput
-              style={[styles.input, { 
-                color: colors.text, 
-                backgroundColor: colors.background,
-                borderColor: colors.tabIconDefault + '30' 
-              }]}
+              style={styles.input}
               placeholder="e.g., JavaScript textbook, Arduino kit, 3D printer..."
-              placeholderTextColor={colors.tabIconDefault}
+              placeholderTextColor={ClayTheme.colors.text.light}
               value={title}
               onChangeText={setTitle}
               maxLength={100}
@@ -101,23 +93,20 @@ export function BorrowModal({ visible, onClose, onSubmit }: BorrowModalProps) {
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>Category</Text>
-            <View style={styles.categoryContainer}>
+            <Text style={styles.label}>Category</Text>
+            <View style={styles.categoryGrid}>
               {CATEGORIES.map((cat) => (
                 <TouchableOpacity
                   key={cat.value}
                   style={[
-                    styles.categoryButton,
-                    { 
-                      backgroundColor: category === cat.value ? colors.tint + '20' : colors.background,
-                      borderColor: category === cat.value ? colors.tint : colors.tabIconDefault + '30',
-                    }
+                    styles.categoryOption,
+                    category === cat.value && styles.categoryOptionSelected,
                   ]}
                   onPress={() => setCategory(cat.value)}
                 >
                   <Text style={[
                     styles.categoryText,
-                    { color: category === cat.value ? colors.tint : colors.text }
+                    category === cat.value && styles.categoryTextSelected,
                   ]}>
                     {cat.label}
                   </Text>
@@ -127,56 +116,29 @@ export function BorrowModal({ visible, onClose, onSubmit }: BorrowModalProps) {
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>Description *</Text>
+            <Text style={styles.label}>Description *</Text>
             <TextInput
-              style={[styles.textArea, { 
-                color: colors.text, 
-                backgroundColor: colors.background,
-                borderColor: colors.tabIconDefault + '30' 
-              }]}
+              style={styles.textArea}
               placeholder="Describe what you need it for, how long you'll need it, any specific requirements..."
-              placeholderTextColor={colors.tabIconDefault}
+              placeholderTextColor={ClayTheme.colors.text.light}
               value={description}
               onChangeText={setDescription}
               multiline
               numberOfLines={4}
               maxLength={500}
             />
-            <Text style={[styles.charCount, { color: colors.tabIconDefault }]}>
-              {description.length}/500
-            </Text>
           </View>
 
           <View style={styles.section}>
-            <Text style={[styles.label, { color: colors.text }]}>Expected Return Date (Optional)</Text>
+            <Text style={styles.label}>Expected Return Date (Optional)</Text>
             <TextInput
-              style={[styles.input, { 
-                color: colors.text, 
-                backgroundColor: colors.background,
-                borderColor: colors.tabIconDefault + '30' 
-              }]}
+              style={styles.input}
               placeholder="e.g., Next Friday, End of semester, 2 weeks..."
-              placeholderTextColor={colors.tabIconDefault}
+              placeholderTextColor={ClayTheme.colors.text.light}
               value={expectedReturnDate}
               onChangeText={setExpectedReturnDate}
               maxLength={50}
             />
-          </View>
-
-          <View style={styles.helpText}>
-            <Text style={[styles.helpTitle, { color: colors.text }]}>Tips for better responses:</Text>
-            <Text style={[styles.helpItem, { color: colors.tabIconDefault }]}>
-              • Be specific about what you need
-            </Text>
-            <Text style={[styles.helpItem, { color: colors.tabIconDefault }]}>
-              • Mention the purpose/project you&apos;ll use it for
-            </Text>
-            <Text style={[styles.helpItem, { color: colors.tabIconDefault }]}>
-              • Include expected return timeframe
-            </Text>
-            <Text style={[styles.helpItem, { color: colors.tabIconDefault }]}>
-              • Be respectful and offer to take good care of the item
-            </Text>
           </View>
         </ScrollView>
       </View>
@@ -187,88 +149,86 @@ export function BorrowModal({ visible, onClose, onSubmit }: BorrowModalProps) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: ClayTheme.colors.background,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingHorizontal: ClayTheme.spacing.lg,
+    paddingVertical: ClayTheme.spacing.md,
     borderBottomWidth: 1,
+    borderBottomColor: ClayTheme.colors.clay.medium,
+    backgroundColor: ClayTheme.colors.surface,
   },
   cancelButton: {
     fontSize: 16,
+    color: ClayTheme.colors.text.secondary,
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '600',
+    color: ClayTheme.colors.text.primary,
   },
   submitButton: {
     fontSize: 16,
     fontWeight: '600',
+    color: ClayTheme.colors.primary,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
+    paddingHorizontal: ClayTheme.spacing.lg,
   },
   section: {
-    marginVertical: 16,
+    marginVertical: ClayTheme.spacing.md,
   },
   label: {
     fontSize: 16,
     fontWeight: '500',
-    marginBottom: 8,
+    marginBottom: ClayTheme.spacing.sm,
+    color: ClayTheme.colors.text.primary,
   },
   input: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    backgroundColor: ClayTheme.colors.surface,
+    borderRadius: ClayTheme.borderRadius.medium,
+    paddingHorizontal: ClayTheme.spacing.md,
+    paddingVertical: ClayTheme.spacing.md,
     fontSize: 16,
+    color: ClayTheme.colors.text.primary,
+    ...ClayTheme.shadows.claySubtle,
   },
   textArea: {
-    borderWidth: 1,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
+    backgroundColor: ClayTheme.colors.surface,
+    borderRadius: ClayTheme.borderRadius.medium,
+    paddingHorizontal: ClayTheme.spacing.md,
+    paddingVertical: ClayTheme.spacing.md,
     fontSize: 16,
     minHeight: 100,
     textAlignVertical: 'top',
+    color: ClayTheme.colors.text.primary,
+    ...ClayTheme.shadows.claySubtle,
   },
-  charCount: {
-    textAlign: 'right',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  categoryContainer: {
+  categoryGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 8,
+    gap: ClayTheme.spacing.sm,
   },
-  categoryButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1,
+  categoryOption: {
+    backgroundColor: ClayTheme.colors.surface,
+    paddingHorizontal: ClayTheme.spacing.md,
+    paddingVertical: ClayTheme.spacing.sm,
+    borderRadius: ClayTheme.borderRadius.medium,
+    ...ClayTheme.shadows.claySubtle,
+  },
+  categoryOptionSelected: {
+    backgroundColor: ClayTheme.colors.primary,
   },
   categoryText: {
     fontSize: 14,
     fontWeight: '500',
+    color: ClayTheme.colors.text.primary,
   },
-  helpText: {
-    marginVertical: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.05)',
-  },
-  helpTitle: {
-    fontSize: 14,
-    fontWeight: '600',
-    marginBottom: 8,
-  },
-  helpItem: {
-    fontSize: 14,
-    marginBottom: 4,
+  categoryTextSelected: {
+    color: ClayTheme.colors.surface,
   },
 });

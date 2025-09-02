@@ -3,9 +3,10 @@ import React from 'react';
 import { Platform } from 'react-native';
 
 import { HapticTab } from '@/components/HapticTab';
-import { IconSymbol } from '@/components/ui/IconSymbol';
+import { ClayTabIcon } from '@/components/ui/ClayTabIcon';
 import TabBarBackground from '@/components/ui/TabBarBackground';
 import { ClayTheme } from '@/theme/claymorph';
+import { HelpCircle, Home, Search, User } from 'lucide-react-native';
 
 export default function TabLayout() {
   return (
@@ -18,41 +19,51 @@ export default function TabLayout() {
         tabBarBackground: TabBarBackground,
         tabBarStyle: Platform.select({
           ios: {
-            // Use a transparent background on iOS to show the blur effect
             position: 'absolute',
             backgroundColor: ClayTheme.colors.surface,
+            borderTopWidth: 0,
+            ...ClayTheme.shadows.clay,
           },
           default: {
             backgroundColor: ClayTheme.colors.surface,
-            borderTopColor: ClayTheme.colors.clay.medium,
-            borderTopWidth: 1,
-            elevation: 8,
+            borderTopWidth: 0,
+            elevation: 12,
             shadowColor: ClayTheme.colors.clay.shadow,
-            shadowOffset: { width: 0, height: -2 },
-            shadowOpacity: 0.1,
-            shadowRadius: 8,
+            shadowOffset: { width: 0, height: -4 },
+            shadowOpacity: 0.15,
+            shadowRadius: 12,
+            height: 65,
+            paddingBottom: 8,
+            paddingTop: 8,
           },
         }),
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Home',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="house.fill" color={color} />,
+          title: 'My Rooms',
+          tabBarIcon: ({ color, focused }) => <ClayTabIcon icon={Home} color={color} focused={focused} size={24} />,
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
           title: 'Explore',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="paperplane.fill" color={color} />,
+          tabBarIcon: ({ color, focused }) => <ClayTabIcon icon={Search} color={color} focused={focused} size={24} />,
         }}
       />
       <Tabs.Screen
         name="profile"
         options={{
           title: 'Profile',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="person.fill" color={color} />,
+          tabBarIcon: ({ color, focused }) => <ClayTabIcon icon={User} color={color} focused={focused} size={24} />,
+        }}
+      />
+      <Tabs.Screen
+        name="how-to-use"
+        options={{
+          title: 'FAQ',
+          tabBarIcon: ({ color, focused }) => <ClayTabIcon icon={HelpCircle} color={color} focused={focused} size={24} />,
         }}
       />
     </Tabs>

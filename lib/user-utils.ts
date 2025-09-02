@@ -1,3 +1,45 @@
+// Get a single user's name by their ID
+import { appwriteConfig, databases } from './appwrite';
+export async function getUserNameById(userId: string): Promise<string | undefined> {
+  try {
+    const user = await databases.getDocument(
+      appwriteConfig.databaseId,
+      appwriteConfig.userCollectionId,
+      userId
+    );
+    return user.name;
+  } catch {
+    return undefined;
+  }
+}
+
+// Fetch user profiles by IDs (for chat sender population)
+export async function getUsersByIds(userIds: string[]): Promise<Record<string, { $id: string; name: string; avatar?: string }>> {
+  if (!userIds.length) return {};
+  const uniqueIds = Array.from(new Set(userIds));
+  const users: Record<string, { $id: string; name: string; avatar?: string }> = {};
+  try {
+    // Appwrite only allows up to 100 queries at once
+    const batchSize = 100;
+    for (let i = 0; i < uniqueIds.length; i += batchSize) {
+      const batch = uniqueIds.slice(i, i + batchSize);
+      const res = await databases.listDocuments(
+        appwriteConfig.databaseId,
+        appwriteConfig.userCollectionId,
+        [
+          // @ts-ignore
+          { method: 'equal', args: ['$id', batch] },
+        ]
+      );
+      for (const user of res.documents) {
+        users[user.$id] = { $id: user.$id, name: user.name, avatar: user.avatar };
+      }
+    }
+  } catch (e) {
+    // fallback: just return empty
+  }
+  return users;
+}
 // Utility functions to handle skills/tools as arrays in Appwrite
 // Keep arrays as arrays since Appwrite is configured to accept them
 

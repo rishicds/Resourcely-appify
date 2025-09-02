@@ -1,13 +1,17 @@
-import { BroadcastModal, RequestModal } from '@/components/room/RoomModals';
+import AISkillSearch from '@/components/AISkillSearch';
+import { GroupChat } from '@/components/room/GroupChat';
+import { BorrowModal, BroadcastModal, RequestModal } from '@/components/room/RoomModals';
 import { Icon } from '@/components/ui/icon';
 import { useAuth } from '@/contexts/AuthContext';
+import { approveBorrowRequest, BorrowRequest, createBorrowRequest, getRoomBorrowRequests } from '@/lib/borrows';
 import { Broadcast, createBroadcast, getRoomBroadcasts } from '@/lib/broadcasts';
 import { acceptRequest, createRequest, getRoomRequests, Request } from '@/lib/requests';
 import { getRoomById } from '@/lib/rooms';
 import { getAvailableRoomUsers, searchUsers, User } from '@/lib/search';
+import { getUsersByIds } from '@/lib/user-utils';
 import { ClayTheme } from '@/theme/claymorph';
 import { router, useLocalSearchParams } from 'expo-router';
-import { ArrowLeft, MessageSquare, Search, Trophy, Zap } from 'lucide-react-native';
+import { ArrowLeft, MessageCircle, MessageSquare, Search, Trophy, Zap } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
   Alert,
@@ -43,7 +47,7 @@ export default function RoomScreen() {
   
   const [searchQuery, setSearchQuery] = useState('');
   const [refreshing, setRefreshing] = useState(false);
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'leaderboard'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'requests' | 'ai-search' | 'leaderboard' | 'chat'>('dashboard');
   const [loading, setLoading] = useState(true);
   
   // Real data state
@@ -51,22 +55,22 @@ export default function RoomScreen() {
   const [members, setMembers] = useState<RoomMember[]>([]);
   const [broadcasts, setBroadcasts] = useState<ActiveBroadcast[]>([]);
   const [requests, setRequests] = useState<Request[]>([]);
+  const [borrowRequests, setBorrowRequests] = useState<BorrowRequest[]>([]);
+  const [userNames, setUserNames] = useState<Record<string, { name: string; avatar?: string }>>({});
   
   // Modal states
   const [showBroadcastModal, setShowBroadcastModal] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
+  const [showBorrowModal, setShowBorrowModal] = useState(false);
 
   // Load room data
   const loadRoomData = useCallback(async () => {
     if (!id || !user) return;
-    
     try {
       setLoading(true);
-      
       // Load room details
       const room = await getRoomById(id as string);
       setRoomData(room);
-      
       // Load room members
       const roomMembers = await getAvailableRoomUsers(id as string);
       const membersWithScores = roomMembers.map(member => ({
@@ -75,7 +79,6 @@ export default function RoomScreen() {
         lastActive: member.lastActive || new Date().toISOString(),
       }));
       setMembers(membersWithScores);
-      
       // Load broadcasts
       const roomBroadcasts = await getRoomBroadcasts(id as string);
       const formattedBroadcasts = roomBroadcasts.map(broadcast => ({
@@ -83,11 +86,36 @@ export default function RoomScreen() {
         timePosted: formatTimeAgo(broadcast.createdAt),
       }));
       setBroadcasts(formattedBroadcasts);
-      
       // Load requests
       const roomRequests = await getRoomRequests(id as string);
       setRequests(roomRequests);
-      
+      // Load borrow requests
+      const roomBorrowRequests = await getRoomBorrowRequests(id as string);
+      setBorrowRequests(roomBorrowRequests);
+
+      // Collect all unique user IDs from broadcasts, requests, and borrowRequests
+      const userIds = new Set<string>();
+      roomBroadcasts.forEach(b => b.authorId && userIds.add(b.authorId));
+      roomRequests.forEach(r => {
+        r.requesterId && userIds.add(r.requesterId);
+        r.helperId && userIds.add(r.helperId);
+      });
+      roomBorrowRequests.forEach(b => b.borrowerId && userIds.add(b.borrowerId));
+      // Fetch user names
+      if (userIds.size > 0) {
+        console.log('Fetching user names for IDs:', Array.from(userIds));
+        const users = await getUsersByIds(Array.from(userIds));
+        console.log('Received users:', users);
+        // Remove $id from value, keep only name and avatar
+        const mapped: Record<string, { name: string; avatar?: string }> = {};
+        Object.values(users).forEach(u => {
+          mapped[u.$id] = { name: u.name, avatar: u.avatar };
+        });
+        console.log('Mapped user names:', mapped);
+        setUserNames(mapped);
+      } else {
+        setUserNames({});
+      }
     } catch (error) {
       console.error('Error loading room data:', error);
       Alert.alert('Error', 'Failed to load room data');
@@ -105,6 +133,17 @@ export default function RoomScreen() {
     if (diffInMinutes < 60) return `${diffInMinutes} min ago`;
     if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)} hour${Math.floor(diffInMinutes / 60) > 1 ? 's' : ''} ago`;
     return `${Math.floor(diffInMinutes / 1440)} day${Math.floor(diffInMinutes / 1440) > 1 ? 's' : ''} ago`;
+  };
+
+  const getStatusColor = (status: string): string => {
+    switch (status) {
+      case 'pending': return ClayTheme.colors.secondary;
+      case 'approved': return ClayTheme.colors.accent;
+      case 'borrowed': return ClayTheme.colors.primary;
+      case 'returned': return ClayTheme.colors.accent;
+      case 'rejected': return ClayTheme.colors.status.error;
+      default: return ClayTheme.colors.text.light;
+    }
   };
 
   useEffect(() => {
@@ -178,6 +217,29 @@ export default function RoomScreen() {
     }
   };
 
+  const handleCreateBorrowRequest = async (data: {
+    title: string;
+    description: string;
+    category: string;
+    expectedReturnDate?: string;
+  }) => {
+    if (!user || !id) return;
+    
+    try {
+      await createBorrowRequest({
+        ...data,
+        borrowerId: user.$id,
+        roomId: id as string,
+      });
+      
+      await loadRoomData(); // Refresh data
+      setShowBorrowModal(false);
+    } catch (error) {
+      console.error('Error creating borrow request:', error);
+      Alert.alert('Error', 'Failed to create borrow request');
+    }
+  };
+
   const filteredMembers = members.filter(member =>
     member.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     member.skills.some(skill => skill.toLowerCase().includes(searchQuery.toLowerCase())) ||
@@ -207,24 +269,29 @@ export default function RoomScreen() {
             <Text style={styles.clayButtonText}>Broadcast</Text>
           </TouchableOpacity>
         </View>
-        {broadcasts.map(broadcast => (
-          <View key={broadcast.$id} style={styles.clayCard}>
-            <View style={styles.broadcastHeader}>
-              <View style={[styles.tag, { backgroundColor: ClayTheme.colors.clay.medium }]}>
-                <Text style={[styles.tagText, { color: ClayTheme.colors.text.secondary }]}>
-                  {broadcast.type}
-                </Text>
+        {broadcasts.map(broadcast => {
+          console.log('Rendering broadcast:', broadcast.authorId, 'UserNames:', userNames[broadcast.authorId]);
+          return (
+            <View key={broadcast.$id} style={styles.clayCard}>
+              <View style={styles.broadcastHeader}>
+                <View style={[styles.tag, { backgroundColor: ClayTheme.colors.clay.medium }]}>
+                  <Text style={[styles.tagText, { color: ClayTheme.colors.text.secondary }]}>
+                    {broadcast.type}
+                  </Text>
+                </View>
+                <Text style={styles.timeText}>{broadcast.timePosted}</Text>
               </View>
-              <Text style={styles.timeText}>{broadcast.timePosted}</Text>
+              <Text style={styles.cardTitle}>{broadcast.title}</Text>
+              <Text style={styles.cardDescription}>{broadcast.description}</Text>
+              <View style={styles.cardFooter}>
+                <Text style={styles.authorText}>
+                  by {userNames[broadcast.authorId]?.name || `User ${broadcast.authorId.substring(0, 8)}`}
+                </Text>
+                <Text style={styles.responseText}>{broadcast.responses} responses</Text>
+              </View>
             </View>
-            <Text style={styles.cardTitle}>{broadcast.title}</Text>
-            <Text style={styles.cardDescription}>{broadcast.description}</Text>
-            <View style={styles.cardFooter}>
-              <Text style={styles.authorText}>by User {broadcast.authorId.substring(0, 8)}</Text>
-              <Text style={styles.responseText}>{broadcast.responses} responses</Text>
-            </View>
-          </View>
-        ))}
+          );
+        })}
       </View>
 
       {/* Search Members */}
@@ -296,6 +363,7 @@ export default function RoomScreen() {
 
   const renderRequests = () => (
     <View style={styles.content}>
+      {/* Help Requests Section */}
       <View style={styles.section}>
         <View style={styles.sectionHeader}>
           <Text style={styles.sectionTitle}>Help Requests</Text>
@@ -329,9 +397,13 @@ export default function RoomScreen() {
             </View>
             
             <View style={styles.cardFooter}>
-              <Text style={styles.authorText}>by User {request.requesterId.substring(0, 8)}</Text>
+              <Text style={styles.authorText}>
+                by {userNames[request.requesterId]?.name || `User ${request.requesterId.substring(0, 8)}`}
+              </Text>
               {request.helperId && (
-                <Text style={styles.responseText}>helping: User {request.helperId.substring(0, 8)}</Text>
+                <Text style={styles.responseText}>
+                  helping: {userNames[request.helperId]?.name || `User ${request.helperId.substring(0, 8)}`}
+                </Text>
               )}
             </View>
             
@@ -345,6 +417,74 @@ export default function RoomScreen() {
             )}
           </View>
         ))}
+        
+        {requests.length === 0 && (
+          <View style={styles.clayCard}>
+            <Text style={styles.cardDescription}>No help requests yet. Be the first to ask for help!</Text>
+          </View>
+        )}
+      </View>
+
+      {/* Borrow Requests Section */}
+      <View style={styles.section}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Borrow Requests</Text>
+          <TouchableOpacity 
+            style={styles.clayButton}
+            onPress={() => setShowBorrowModal(true)}
+          >
+            <Text style={styles.clayButtonText}>New Request</Text>
+          </TouchableOpacity>
+        </View>
+        {borrowRequests.map(borrowRequest => (
+          <View key={borrowRequest.$id} style={styles.clayCard}>
+            <View style={styles.broadcastHeader}>
+              <View style={[styles.tag, { backgroundColor: ClayTheme.colors.clay.medium }]}>
+                <Text style={[styles.tagText, { color: ClayTheme.colors.text.secondary }]}>
+                  {borrowRequest.category}
+                </Text>
+              </View>
+              <View style={[styles.tag, { backgroundColor: getStatusColor(borrowRequest.status) }]}>
+                <Text style={[styles.tagText, { color: ClayTheme.colors.surface }]}>
+                  {borrowRequest.status}
+                </Text>
+              </View>
+            </View>
+            
+            <Text style={styles.cardTitle}>{borrowRequest.title}</Text>
+            <Text style={styles.cardDescription}>{borrowRequest.description}</Text>
+            
+            {borrowRequest.expectedReturnDate && (
+              <Text style={styles.timeText}>
+                Expected return: {new Date(borrowRequest.expectedReturnDate).toLocaleDateString()}
+              </Text>
+            )}
+            
+            <View style={styles.cardFooter}>
+              <Text style={styles.authorText}>
+                by {userNames[borrowRequest.borrowerId]?.name || `User ${borrowRequest.borrowerId.substring(0, 8)}`}
+              </Text>
+              <Text style={styles.timeText}>
+                {formatTimeAgo(borrowRequest.createdAt)}
+              </Text>
+            </View>
+            
+            {borrowRequest.status === 'pending' && borrowRequest.borrowerId !== user?.$id && (
+              <TouchableOpacity 
+                style={styles.clayButton}
+                onPress={() => handleApproveBorrowRequest(borrowRequest.$id)}
+              >
+                <Text style={styles.clayButtonText}>Approve & Lend</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        ))}
+        
+        {borrowRequests.length === 0 && (
+          <View style={styles.clayCard}>
+            <Text style={styles.cardDescription}>No borrow requests yet. Be the first to request an item!</Text>
+          </View>
+        )}
       </View>
     </View>
   );
@@ -371,6 +511,30 @@ export default function RoomScreen() {
     </View>
   );
 
+  const renderChat = () => (
+    <View style={styles.chatContainer}>
+      {id && <GroupChat roomId={id as string} />}
+    </View>
+  );
+
+  const renderAISearch = () => (
+    <View style={styles.content}>
+      <AISkillSearch
+        roomId={id as string}
+        onUserSelect={(user) => {
+          // You can add logic here to view user profile or start a conversation
+          Alert.alert('User Selected', `You selected ${user.name}`);
+        }}
+        onCreateRequest={(query, suggestedUsers) => {
+          // Auto-populate request modal with AI suggestions
+          setShowRequestModal(true);
+          // You could pre-fill the request with the query and suggested users
+        }}
+        maxResults={10}
+      />
+    </View>
+  );
+
   const handleAcceptRequest = async (requestId: string) => {
     if (!user) return;
     
@@ -380,6 +544,18 @@ export default function RoomScreen() {
     } catch (error) {
       console.error('Error accepting request:', error);
       Alert.alert('Error', 'Failed to accept request');
+    }
+  };
+
+  const handleApproveBorrowRequest = async (borrowRequestId: string) => {
+    if (!user) return;
+    
+    try {
+      await approveBorrowRequest(borrowRequestId, user.$id);
+      await loadRoomData(); // Refresh data
+    } catch (error) {
+      console.error('Error approving borrow request:', error);
+      Alert.alert('Error', 'Failed to approve borrow request');
     }
   };
 
@@ -404,14 +580,14 @@ export default function RoomScreen() {
         >
           <Icon 
             name={Zap} 
-            size={20} 
+            size={12} 
             color={activeTab === 'dashboard' ? ClayTheme.colors.primary : ClayTheme.colors.text.light} 
           />
           <Text style={[
             styles.tabText,
             { color: activeTab === 'dashboard' ? ClayTheme.colors.primary : ClayTheme.colors.text.light }
           ]}>
-            Dashboard
+            General
           </Text>
         </TouchableOpacity>
 
@@ -421,14 +597,48 @@ export default function RoomScreen() {
         >
           <Icon 
             name={MessageSquare} 
-            size={20} 
+            size={12} 
             color={activeTab === 'requests' ? ClayTheme.colors.primary : ClayTheme.colors.text.light} 
           />
           <Text style={[
             styles.tabText,
             { color: activeTab === 'requests' ? ClayTheme.colors.primary : ClayTheme.colors.text.light }
           ]}>
-            Requests
+            Reqs
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'ai-search' && styles.activeTab]}
+          onPress={() => setActiveTab('ai-search')}
+        >
+          <Icon 
+            name={Search} 
+            size={12} 
+            color={activeTab === 'ai-search' ? ClayTheme.colors.primary : ClayTheme.colors.text.light} 
+          />
+          <Text style={[
+            styles.tabText,
+            { color: activeTab === 'ai-search' ? ClayTheme.colors.primary : ClayTheme.colors.text.light }
+          ]}>
+            Search
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'chat' && styles.activeTab]}
+          onPress={() => setActiveTab('chat')}
+        >
+          <Icon 
+            name={MessageCircle} 
+            size={12} 
+            color={activeTab === 'chat' ? ClayTheme.colors.primary : ClayTheme.colors.text.light} 
+          />
+          <Text style={[
+            styles.tabText,
+            { color: activeTab === 'chat' ? ClayTheme.colors.primary : ClayTheme.colors.text.light }
+          ]}>
+            Chat
           </Text>
         </TouchableOpacity>
 
@@ -438,14 +648,14 @@ export default function RoomScreen() {
         >
           <Icon 
             name={Trophy} 
-            size={20} 
+            size={12} 
             color={activeTab === 'leaderboard' ? ClayTheme.colors.primary : ClayTheme.colors.text.light} 
           />
           <Text style={[
             styles.tabText,
             { color: activeTab === 'leaderboard' ? ClayTheme.colors.primary : ClayTheme.colors.text.light }
           ]}>
-            Leaderboard
+            Points
           </Text>
         </TouchableOpacity>
       </View>
@@ -459,8 +669,11 @@ export default function RoomScreen() {
       >
         {activeTab === 'dashboard' && renderDashboard()}
         {activeTab === 'requests' && renderRequests()}
+        {activeTab === 'ai-search' && renderAISearch()}
         {activeTab === 'leaderboard' && renderLeaderboard()}
       </ScrollView>
+
+      {activeTab === 'chat' && renderChat()}
 
       {/* Modals */}
       <BroadcastModal
@@ -473,6 +686,12 @@ export default function RoomScreen() {
         visible={showRequestModal}
         onClose={() => setShowRequestModal(false)}
         onSubmit={handleCreateRequest}
+      />
+
+      <BorrowModal
+        visible={showBorrowModal}
+        onClose={() => setShowBorrowModal(false)}
+        onSubmit={handleCreateBorrowRequest}
       />
     </SafeAreaView>
   );
@@ -513,14 +732,16 @@ const styles = StyleSheet.create({
     backgroundColor: ClayTheme.colors.surface,
     borderBottomWidth: 1,
     borderBottomColor: ClayTheme.colors.clay.medium,
+    paddingHorizontal: 8, // add horizontal padding for breathing room
   },
   tab: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: ClayTheme.spacing.md,
-    gap: ClayTheme.spacing.sm,
+    paddingVertical: ClayTheme.spacing.lg, // increased vertical padding
+    gap: ClayTheme.spacing.md, // increased gap between icon and text
+    marginHorizontal: 4, // add margin between tabs
   },
   activeTab: {
     borderBottomWidth: 2,
@@ -695,5 +916,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     marginTop: 10,
     color: ClayTheme.colors.text.primary,
+  },
+  chatContainer: {
+    flex: 1,
+    backgroundColor: ClayTheme.colors.background,
   },
 });

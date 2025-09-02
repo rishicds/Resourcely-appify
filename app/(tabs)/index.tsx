@@ -11,6 +11,7 @@ import {
 } from '@/lib/rooms';
 import { clayMorphStyles, ClayTheme } from '@/theme/claymorph';
 import { router } from 'expo-router';
+import LottieView from 'lottie-react-native';
 import { ChevronDown, ChevronUp, Hash, LogOut, Plus, Search } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
@@ -75,10 +76,11 @@ const styles = StyleSheet.create({
   joinToggle: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: 18,
+    paddingVertical: 14,
     gap: 8,
     ...clayMorphStyles.button,
+    ...ClayTheme.shadows.claySubtle,
   },
   joinToggleText: {
     flex: 1,
@@ -96,15 +98,18 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     fontSize: 16,
+    // backgroundColor removed to avoid duplicate property
     ...clayMorphStyles.input,
     color: ClayTheme.colors.text.primary,
+    ...ClayTheme.shadows.clayInset,
   },
   joinButton: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 22,
     paddingVertical: 12,
     ...clayMorphStyles.button,
     backgroundColor: ClayTheme.colors.primary,
     justifyContent: 'center',
+    ...ClayTheme.shadows.clay,
   },
   joinButtonText: {
     fontSize: 16,
@@ -119,9 +124,9 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   emptyState: {
-    padding: 20,
-    borderRadius: 12,
     alignItems: 'center',
+    ...clayMorphStyles.card,
+    ...ClayTheme.shadows.clayInset,
   },
   emptyStateText: {
     fontSize: 16,
@@ -129,17 +134,8 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   roomCard: {
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 12,
-    shadowColor: '#000',
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: 3.84,
-    elevation: 5,
+    ...clayMorphStyles.card,
+    marginBottom: 16,
   },
   roomHeader: {
     flexDirection: 'row',
@@ -169,13 +165,15 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   avatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: ClayTheme.borderRadius.round,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: '#fff',
+    borderColor: ClayTheme.colors.surface,
+    backgroundColor: ClayTheme.colors.clay.medium,
+    ...ClayTheme.shadows.claySubtle,
   },
   remainingAvatar: {
     marginLeft: -8,
@@ -188,19 +186,22 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    marginRight: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: ClayTheme.borderRadius.medium,
+    marginRight: 8,
+    backgroundColor: ClayTheme.colors.clay.medium,
+    ...ClayTheme.shadows.claySubtle,
   },
   tagText: {
     fontSize: 12,
     fontWeight: '500',
   },
   roomAction: {
-    paddingVertical: 12,
-    borderRadius: 8,
+    paddingVertical: 14,
     alignItems: 'center',
+    ...clayMorphStyles.button,
+    ...ClayTheme.shadows.claySubtle,
   },
   roomActionText: {
     fontSize: 16,
@@ -499,6 +500,15 @@ export default function RoomsMainScreen() {
         }
         showsVerticalScrollIndicator={false}
       >
+        {/* Group Lottie Animation */}
+        <View style={{ alignItems: 'center', marginBottom: 12 }}>
+          <LottieView
+            source={require('@/assets/lottie/group.json')}
+            autoPlay
+            loop
+            style={{ width: 180, height: 180 }}
+          />
+        </View>
         {/* Join Room Section */}
         <View style={styles.joinSection}>
           <TouchableOpacity
