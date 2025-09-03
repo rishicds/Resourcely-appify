@@ -22,7 +22,7 @@ A React Native app built with Expo that helps users connect, share skills, and c
 - **Framework**: React Native with Expo
 - **Navigation**: Expo Router (file-based routing)
 - **Authentication**: Appwrite Auth
-- **Database**: Appwrite Database (NoSQL)
+- **Database**: Appwrite Database (based on postgresql)
 - **Real-time**: Appwrite Realtime for chat and live updates
 - **Styling**: StyleSheet with Clay Morphism design system
 - **Animations**: Lottie React Native
