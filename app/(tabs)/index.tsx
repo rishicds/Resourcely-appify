@@ -1,4 +1,4 @@
-import { Icon } from '@/components/ui/icon';
+import { default as Icon } from '@/components/SafeIcon';
 import { Colors } from '@/constants/Colors';
 import { useAuth } from '@/contexts/AuthContext';
 import { useColorScheme } from '@/hooks/useColorScheme';

@@ -1,25 +1,25 @@
-import { Icon } from '@/components/ui/icon';
+import { default as Icon } from '@/components/SafeIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  getPublicRooms,
-  isUserMemberOfRoom,
-  joinRoom,
-  joinRoomByCode,
-  Room
+    getPublicRooms,
+    isUserMemberOfRoom,
+    joinRoom,
+    joinRoomByCode,
+    Room
 } from '@/lib/rooms';
 import { clayMorphStyles, ClayTheme } from '@/theme/claymorph';
 import { router } from 'expo-router';
 import { ChevronDown, ChevronUp, Hash, Search } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

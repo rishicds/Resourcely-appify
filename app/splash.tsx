@@ -38,18 +38,28 @@ export default function SplashScreen() {
     // Only redirect after auth loading is complete AND minimum time has elapsed
     if (!isLoading && minTimeElapsed) {
       const redirectWithDelay = () => {
-        if (!isAuthenticated) {
-          // Not authenticated, go to login
-          console.log('Redirecting to login');
+        try {
+          if (!isAuthenticated) {
+            // Not authenticated, go to login
+            console.log('Redirecting to login');
+            router.replace('/(auth)/register' as any);
+          } else if (user && !user.hasCompletedOnboarding) {
+            // Authenticated but hasn't completed onboarding
+            console.log('Redirecting to onboarding');
+            router.replace('/(onboarding)/skills' as any);
+          } else if (user) {
+            // Authenticated and onboarded, go to main app
+            console.log('Redirecting to main app');
+            router.replace('/(main)' as any);
+          } else {
+            // Edge case: authenticated but no user data
+            console.log('Authenticated but no user data, redirecting to login');
+            router.replace('/(auth)/register' as any);
+          }
+        } catch (error) {
+          console.error('Navigation error in splash screen:', error);
+          // Fallback to login on any navigation error
           router.replace('/(auth)/register' as any);
-        } else if (user && !user.hasCompletedOnboarding) {
-          // Authenticated but hasn't completed onboarding
-          console.log('Redirecting to onboarding');
-          router.replace('/(onboarding)/skills' as any);
-        } else {
-          // Authenticated and onboarded, go to main app
-          console.log('Redirecting to main app');
-          router.replace('/(main)' as any);
         }
       };
 
@@ -82,7 +92,9 @@ export default function SplashScreen() {
             showLabel={false}
           />
           <Text style={styles.loadingText}>
-            {isLoading ? 'Checking authentication...' : 'Getting ready...'}
+            {isLoading 
+              ? (isAuthenticated && user ? 'Loading your profile...' : 'Checking authentication...') 
+              : 'Getting ready...'}
           </Text>
         </View>
       </Animated.View>

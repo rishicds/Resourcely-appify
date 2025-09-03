@@ -1,7 +1,7 @@
 import AISkillSearch from '@/components/AISkillSearch';
 import { GroupChat } from '@/components/room/GroupChat';
 import { BorrowModal, BroadcastModal, RequestModal } from '@/components/room/RoomModals';
-import { Icon } from '@/components/ui/icon';
+import { default as Icon } from '@/components/SafeIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { approveBorrowRequest, BorrowRequest, createBorrowRequest, getRoomBorrowRequests } from '@/lib/borrows';
 import { Broadcast, createBroadcast, getRoomBroadcasts } from '@/lib/broadcasts';
@@ -14,14 +14,14 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { ArrowLeft, MessageCircle, MessageSquare, Search, Trophy, Zap } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
 import {
-  Alert,
-  RefreshControl,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    RefreshControl,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 

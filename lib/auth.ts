@@ -51,7 +51,7 @@ class AuthService {
   }
 
   // Get cached user data
-  private async getCachedUser(): Promise<User | null> {
+  async getCachedUser(): Promise<User | null> {
     try {
       const cachedUser = await AsyncStorage.getItem(STORAGE_KEYS.USER);
       return cachedUser ? JSON.parse(cachedUser) : null;
@@ -332,11 +332,36 @@ class AuthService {
   // Check if user has active session
   async checkSession() {
     try {
-      const session = await withTimeout(account.getSession('current'), 5000);
-      return !!session;
+      // Try multiple times with different timeouts for better reliability
+      let session = null;
+      
+      // First try with short timeout
+      try {
+        session = await withTimeout(account.getSession('current'), 3000);
+      } catch {
+        console.log('First session check failed, retrying with longer timeout...');
+        // Second try with longer timeout
+        try {
+          session = await withTimeout(account.getSession('current'), 8000);
+        } catch (retryError) {
+          console.log('Second session check failed, checking cache...');
+          // If all else fails, check if we have cached session status
+          const cachedStatus = await this.getCachedSessionStatus();
+          if (cachedStatus) {
+            console.log('Using cached session status');
+            return true;
+          }
+          throw retryError;
+        }
+      }
+      
+      const hasSession = !!session;
+      await this.cacheSessionStatus(hasSession);
+      return hasSession;
     } catch (error) {
       // In production builds, network timeouts or other issues can cause this to fail
       console.log('No active session found:', error);
+      await this.cacheSessionStatus(false);
       return false;
     }
   }

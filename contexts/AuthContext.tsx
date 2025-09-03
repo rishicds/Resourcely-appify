@@ -34,15 +34,43 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // Add a small delay to prevent immediate crashes on app startup
       await new Promise(resolve => setTimeout(resolve, 100));
       
+      // First try to get cached user for immediate UI feedback
+      const cachedUser = await authService.getCachedUser();
+      if (cachedUser) {
+        setState({
+          user: cachedUser,
+          isLoading: true, // Still loading while we verify the session
+          isAuthenticated: true,
+        });
+      }
+      
       const hasSession = await authService.checkSession();
       
       if (hasSession) {
-        const user = await authService.getCurrentUser();
-        setState({
-          user,
-          isLoading: false,
-          isAuthenticated: !!user,
-        });
+        try {
+          const user = await authService.getCurrentUser();
+          setState({
+            user,
+            isLoading: false,
+            isAuthenticated: !!user,
+          });
+        } catch (error) {
+          console.error('Error getting current user:', error);
+          // If we have cached user, keep using it but mark as not loading
+          if (cachedUser) {
+            setState({
+              user: cachedUser,
+              isLoading: false,
+              isAuthenticated: true,
+            });
+          } else {
+            setState({
+              user: null,
+              isLoading: false,
+              isAuthenticated: false,
+            });
+          }
+        }
       } else {
         setState({
           user: null,
@@ -59,6 +87,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Ignore cleanup errors in production
         console.log('Cleanup error (can be ignored):', signOutError);
       }
+      
+      // Check if we have cached user data to fallback to
+      try {
+        const cachedUser = await authService.getCachedUser();
+        if (cachedUser) {
+          console.log('Using cached user data as fallback');
+          setState({
+            user: cachedUser,
+            isLoading: false,
+            isAuthenticated: true,
+          });
+          return;
+        }
+      } catch {
+        console.log('No cached user data available');
+      }
+      
       setState({
         user: null,
         isLoading: false,
