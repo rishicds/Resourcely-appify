@@ -10,7 +10,7 @@ import {
   Room
 } from '@/lib/rooms';
 import { clayMorphStyles, ClayTheme } from '@/theme/claymorph';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import LottieView from 'lottie-react-native';
 import { ChevronDown, ChevronUp, Hash, LogOut, Plus, Search } from 'lucide-react-native';
 import React, { useCallback, useEffect, useState } from 'react';
@@ -275,6 +275,14 @@ export default function RoomsMainScreen() {
   useEffect(() => {
     console.log('UserRooms changed:', userRooms.length, userRooms.map(r => r.name));
   }, [userRooms]);
+
+  // Automatically refresh when the screen is focused (user accesses this page)
+  useFocusEffect(
+    useCallback(() => {
+      console.log('Screen focused - refreshing rooms data');
+      loadRooms();
+    }, [loadRooms])
+  );
 
   const onRefresh = async () => {
     setRefreshing(true);
