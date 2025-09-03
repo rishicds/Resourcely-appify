@@ -50,7 +50,7 @@ export default function SplashScreen() {
           } else if (user) {
             // Authenticated and onboarded, go to main app
             console.log('Redirecting to main app');
-            router.replace('/(tabs)/index' as any);
+            router.replace('/(tabs)/' as any);
           } else {
             // Edge case: authenticated but no user data
             console.log('Authenticated but no user data, redirecting to login');
