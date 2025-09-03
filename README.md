@@ -251,9 +251,3 @@ Then use the Expo Go app to scan the QR code, or run on a simulator:
 - Check collection permissions in Appwrite console
 - Ensure required attributes are properly configured
 
-### Performance Tips
-- Use React.memo for components that don't need frequent re-renders
-- Implement pagination for large lists (rooms, messages)
-- Optimize image loading with proper caching
-- Use Expo's bundle splitting for better load times
-
